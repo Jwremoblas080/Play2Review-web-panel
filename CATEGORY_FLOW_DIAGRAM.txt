@@ -1,0 +1,265 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    CATEGORY SYSTEM FLOW DIAGRAM                              ║
+║                    KEY vs LABEL Architecture                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: USER INTERFACE (Unity)                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  User sees dropdown with LABELS:                                            │
+│  ┌────────────────────────────────────────┐                                 │
+│  │ Select Category:                       │                                 │
+│  │ ┌────────────────────────────────────┐ │                                 │
+│  │ │ Grammar & Language Structure    ▼ │ │  ← LABEL (UI Display)          │
+│  │ └────────────────────────────────────┘ │                                 │
+│  │ • Grammar & Language Structure         │                                 │
+│  │ • Vocabulary                           │                                 │
+│  │ • Reading Comprehension                │                                 │
+│  │ • Literature                           │                                 │
+│  │ • Writing Skills                       │                                 │
+│  └────────────────────────────────────────┘                                 │
+│                                                                              │
+│  User clicks: "Grammar & Language Structure"                                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                          User Selection Event
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: UNITY C# PROCESSING (CategorySelectionManager)                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Dictionary<string, Dictionary<string, string>> subjectCategories            │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ ["english"] = {                                                │         │
+│  │     "grammar" → "Grammar & Language Structure",  ← KEY → LABEL │         │
+│  │     "vocabulary" → "Vocabulary",                               │         │
+│  │     "reading" → "Reading Comprehension"                        │         │
+│  │ }                                                              │         │
+│  └────────────────────────────────────────────────────────────────┘         │
+│                                                                              │
+│  OnDropdownChanged(index):                                                  │
+│    selectedLabel = "Grammar & Language Structure"  ← From dropdown          │
+│    selectedKey = GetCategoryKey("english", selectedLabel)                   │
+│    selectedKey = "grammar"  ← KEY extracted                                 │
+│                                                                              │
+│  PlayerPrefs.SetString("SelectedCategory", "grammar")  ← Store KEY          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            API Call Preparation
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: HTTP REQUEST (Unity → PHP)                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  WWWForm form = new WWWForm();                                              │
+│  form.AddField("subject_name", "english");                                  │
+│  form.AddField("category", "grammar");  ← Send KEY (not label)              │
+│  form.AddField("quiz_level", 1);                                            │
+│                                                                              │
+│  POST http://server.com/get_quiz_questions_by_category.php                  │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ subject_name: "english"                                        │         │
+│  │ category: "grammar"  ← KEY                                     │         │
+│  │ quiz_level: 1                                                  │         │
+│  └────────────────────────────────────────────────────────────────┘         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            Network Transfer
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 4: PHP BACKEND PROCESSING (get_quiz_questions_by_category.php)         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  require_once('admin/category-config.php');                                 │
+│                                                                              │
+│  $CATEGORY_CONFIG = [                                                       │
+│      'english' => [                                                         │
+│          'grammar' => 'Grammar & Language Structure',  ← KEY → LABEL        │
+│          'vocabulary' => 'Vocabulary'                                       │
+│      ]                                                                      │
+│  ];                                                                         │
+│                                                                              │
+│  $subject = $_POST['subject_name'];  // "english"                           │
+│  $categoryKey = $_POST['category'];  // "grammar" ← KEY received            │
+│                                                                              │
+│  // ✅ VALIDATION using KEY                                                 │
+│  if (!isValidCategory($subject, $categoryKey)) {                            │
+│      throw new Exception("Invalid category key");                           │
+│  }                                                                          │
+│                                                                              │
+│  // ✅ Get LABEL for response                                               │
+│  $categoryLabel = getCategoryLabel($subject, $categoryKey);                 │
+│  // Returns: "Grammar & Language Structure"                                 │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            Database Query
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 5: DATABASE QUERY (MySQL)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  $sql = "SELECT * FROM quizes                                               │
+│          WHERE subject_name = :subject                                      │
+│          AND category = :category";  ← Query using KEY                      │
+│                                                                              │
+│  $stmt->bindParam(':subject', 'english');                                   │
+│  $stmt->bindParam(':category', 'grammar');  ← KEY                           │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ quizes TABLE                                                   │         │
+│  ├────┬─────────┬──────────┬──────────────────────────────────────┤         │
+│  │ id │ subject │ category │ question                             │         │
+│  ├────┼─────────┼──────────┼──────────────────────────────────────┤         │
+│  │ 1  │ english │ grammar  │ What is a noun?  ← KEY stored        │         │
+│  │ 2  │ english │ grammar  │ Identify the verb...                 │         │
+│  │ 3  │ english │ vocabulary│ Define the word...                  │         │
+│  └────┴─────────┴──────────┴──────────────────────────────────────┘         │
+│                                                                              │
+│  Result: 2 questions found with category = "grammar"                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            Build Response
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 6: PHP RESPONSE (JSON)                                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  $response = [                                                              │
+│      'success' => true,                                                     │
+│      'category_key' => 'grammar',  ← KEY for storage/logic                  │
+│      'category_label' => 'Grammar & Language Structure',  ← LABEL for UI    │
+│      'subject' => 'english',                                                │
+│      'total_questions' => 2,                                                │
+│      'questions' => [                                                       │
+│          [                                                                  │
+│              'id' => 1,                                                     │
+│              'category' => 'grammar',  ← KEY                                │
+│              'question' => 'What is a noun?',                               │
+│              'answer_a' => 'A person',                                      │
+│              'answer_b' => 'A place',                                       │
+│              'correct_answer_number' => 1                                   │
+│          ],                                                                 │
+│          [...]                                                              │
+│      ]                                                                      │
+│  ];                                                                         │
+│                                                                              │
+│  echo json_encode($response);                                               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            Network Transfer
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 7: UNITY RECEIVES RESPONSE                                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  QuizResponse response = JsonUtility.FromJson<QuizResponse>(json);          │
+│                                                                              │
+│  Debug.Log(response.category_key);    // "grammar" ← For logic              │
+│  Debug.Log(response.category_label);  // "Grammar & Language..." ← For UI   │
+│  Debug.Log(response.total_questions); // 2                                  │
+│                                                                              │
+│  // Display LABEL in UI                                                     │
+│  categoryText.text = response.category_label;                               │
+│                                                                              │
+│  // Store KEY for next API call                                             │
+│  PlayerPrefs.SetString("LastCategory", response.category_key);              │
+│                                                                              │
+│  // Load questions into quiz                                                │
+│  foreach (var question in response.questions) {                             │
+│      LoadQuestion(question);                                                │
+│  }                                                                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                            Quiz Gameplay
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 8: SAVE PROGRESS (After Quiz Completion)                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Unity sends progress:                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ POST save_game_data.php                                        │         │
+│  │ user_id: 123                                                   │         │
+│  │ subject: "english"                                             │         │
+│  │ category: "grammar"  ← KEY                                     │         │
+│  │ score: 85                                                      │         │
+│  │ xp_earned: 100                                                 │         │
+│  └────────────────────────────────────────────────────────────────┘         │
+│                                                                              │
+│  PHP validates and saves:                                                   │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ if (!isValidCategory($subject, $categoryKey)) {                │         │
+│  │     die("Invalid category");                                   │         │
+│  │ }                                                              │         │
+│  │                                                                │         │
+│  │ INSERT INTO quiz_progress                                      │         │
+│  │ (user_id, subject, category, score, xp_earned)                │         │
+│  │ VALUES (123, 'english', 'grammar', 85, 100)  ← KEY stored      │         │
+│  └────────────────────────────────────────────────────────────────┘         │
+│                                                                              │
+│  Database:                                                                  │
+│  ┌────────────────────────────────────────────────────────────────┐         │
+│  │ quiz_progress TABLE                                            │         │
+│  ├────┬─────────┬─────────┬──────────┬───────┬───────────┐        │         │
+│  │ id │ user_id │ subject │ category │ score │ xp_earned │        │         │
+│  ├────┼─────────┼─────────┼──────────┼───────┼───────────┤        │         │
+│  │ 1  │ 123     │ english │ grammar  │ 85    │ 100       │ ← KEY  │         │
+│  └────┴─────────┴─────────┴──────────┴───────┴───────────┘        │         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              KEY TAKEAWAYS                                   ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  ✅ UI Layer (Unity):                                                        ║
+║     • Displays LABELS to users                                              ║
+║     • Converts LABELS to KEYS before API calls                              ║
+║     • Stores KEYS in PlayerPrefs                                            ║
+║                                                                              ║
+║  ✅ API Layer (PHP):                                                         ║
+║     • Receives KEYS from Unity                                              ║
+║     • Validates KEYS using config                                           ║
+║     • Returns both KEY and LABEL in responses                               ║
+║                                                                              ║
+║  ✅ Data Layer (MySQL):                                                      ║
+║     • Stores only KEYS                                                      ║
+║     • Queries use KEYS                                                      ║
+║     • Never stores LABELS                                                   ║
+║                                                                              ║
+║  🎯 Benefits:                                                                ║
+║     • Easy to update labels without database changes                        ║
+║     • Consistent data across all tables                                     ║
+║     • Smaller database storage                                              ║
+║     • Multi-language support ready                                          ║
+║     • Scalable for analytics and gamification                               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          COMPARISON TABLE                                    ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  ┌────────────────────┬─────────────────────┬──────────────────────────┐    ║
+║  │ Component          │ Uses KEY            │ Uses LABEL               │    ║
+║  ├────────────────────┼─────────────────────┼──────────────────────────┤    ║
+║  │ UI Dropdown        │                     │ ✅ Display               │    ║
+║  │ UI Text            │                     │ ✅ Display               │    ║
+║  │ PlayerPrefs        │ ✅ Storage          │                          │    ║
+║  │ API Request        │ ✅ Parameter        │                          │    ║
+║  │ API Response       │ ✅ Included         │ ✅ Included              │    ║
+║  │ PHP Validation     │ ✅ Validate         │                          │    ║
+║  │ Database Storage   │ ✅ Store            │ ❌ Never                 │    ║
+║  │ Database Query     │ ✅ WHERE clause     │ ❌ Never                 │    ║
+║  │ Analytics          │ ✅ GROUP BY         │                          │    ║
+║  └────────────────────┴─────────────────────┴──────────────────────────┘    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝

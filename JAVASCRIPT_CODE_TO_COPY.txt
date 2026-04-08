@@ -1,0 +1,158 @@
+================================================================================
+COPY THIS ENTIRE CODE BLOCK
+================================================================================
+Paste this code in manage-quizes.php RIGHT BEFORE the </body> tag
+================================================================================
+
+<script>
+// ========== CATEGORY MANAGEMENT SYSTEM ==========
+$(document).ready(function() {
+    console.log('Category Management System Initialized');
+    
+    // ADD MODAL: Subject Change Handler
+    $('#add-subject-select').on('change', function() {
+        const selectedSubject = $(this).val();
+        console.log('Add Modal - Subject changed to:', selectedSubject);
+        
+        // Hide all category containers
+        $('#addQuizModal .category-container').hide();
+        $('#addQuizModal .category-select').prop('disabled', true).prop('required', false);
+        
+        // Show selected subject's category dropdown
+        if (selectedSubject) {
+            const categoryContainer = $('#add-' + selectedSubject + '-category');
+            if (categoryContainer.length) {
+                categoryContainer.show();
+                categoryContainer.find('.category-select').prop('disabled', false).prop('required', true);
+                console.log('Showing category for:', selectedSubject);
+            }
+        }
+    });
+    
+    // EDIT MODAL: Subject Change Handler
+    $('#edit-subject-select').on('change', function() {
+        const selectedSubject = $(this).val();
+        console.log('Edit Modal - Subject changed to:', selectedSubject);
+        
+        // Hide all category containers
+        $('#editQuizModal .category-container').hide();
+        $('#editQuizModal .category-select').prop('disabled', true).prop('required', false);
+        
+        // Show selected subject's category dropdown
+        if (selectedSubject) {
+            const categoryContainer = $('#edit-' + selectedSubject + '-category');
+            if (categoryContainer.length) {
+                categoryContainer.show();
+                categoryContainer.find('.category-select').prop('disabled', false).prop('required', true);
+                console.log('Showing category for:', selectedSubject);
+            }
+        }
+    });
+    
+    // EDIT MODAL: Populate Data
+    $('.btn-edit').on('click', function() {
+        const quizData = $(this).data('quiz');
+        console.log('Edit button clicked, quiz data:', quizData);
+        
+        if (!quizData) return;
+        
+        // Fill form fields
+        $('#edit_quiz_id').val(quizData.id);
+        $('#edit-subject-select').val(quizData.subject_name);
+        $('#edit_quiz_level').val(quizData.quiz_level);
+        $('#edit_question').val(quizData.question);
+        $('#edit_answer_a').val(quizData.answer_a);
+        $('#edit_answer_b').val(quizData.answer_b);
+        $('#edit_answer_c').val(quizData.answer_c);
+        $('#edit_answer_d').val(quizData.answer_d);
+        $('#edit_correct_answer').val(quizData.correct_answer_number);
+        
+        // Show category dropdown
+        $('#edit-subject-select').trigger('change');
+        
+        // Set category value
+        setTimeout(function() {
+            const categorySelect = $('#edit-' + quizData.subject_name + '-category').find('.category-select');
+            if (categorySelect.length) {
+                categorySelect.val(quizData.category || '');
+                console.log('Category set to:', quizData.category);
+            }
+        }, 100);
+    });
+    
+    // DELETE MODAL: Populate Data
+    $('.btn-delete').on('click', function() {
+        const quizId = $(this).data('quiz-id');
+        const subject = $(this).data('subject');
+        const question = $(this).data('question');
+        
+        $('#delete_quiz_id').val(quizId);
+        $('#delete_subject_name').val(subject);
+        $('#delete_question_preview').text(question);
+    });
+    
+    // Initialize on page load
+    const currentSubject = $('#add-subject-select').val();
+    if (currentSubject) {
+        $('#add-subject-select').trigger('change');
+    }
+    
+    // Form validation
+    $('form').on('submit', function(e) {
+        const form = $(this);
+        const modal = form.closest('.modal');
+        
+        if (modal.attr('id') === 'addQuizModal' || modal.attr('id') === 'editQuizModal') {
+            const categorySelect = modal.find('.category-select:visible:enabled');
+            
+            if (categorySelect.length > 0 && !categorySelect.val()) {
+                e.preventDefault();
+                alert('Please select a category before submitting.');
+                categorySelect.focus();
+                return false;
+            }
+        }
+    });
+    
+    // Reset modals when closed
+    $('#addQuizModal').on('hidden.bs.modal', function() {
+        $(this).find('form')[0].reset();
+        $(this).find('.category-container').hide();
+        $(this).find('.category-select').prop('disabled', true).prop('required', false);
+    });
+    
+    $('#editQuizModal').on('hidden.bs.modal', function() {
+        $(this).find('.category-container').hide();
+        $(this).find('.category-select').prop('disabled', true).prop('required', false);
+    });
+    
+    console.log('Category Management JavaScript fully initialized');
+});
+</script>
+
+================================================================================
+END OF CODE TO COPY
+================================================================================
+
+INSTRUCTIONS:
+1. Open: C:\xampp\htdocs\play2review\admin\manage-quizes.php
+2. Find: </body> (near the end of file)
+3. Paste this code RIGHT BEFORE </body>
+4. Save file (Ctrl + S)
+5. Test in browser
+
+Your file should look like:
+
+    ... existing HTML ...
+    
+    <script>
+    // ========== CATEGORY MANAGEMENT SYSTEM ==========
+    $(document).ready(function() {
+        ... (the code above) ...
+    });
+    </script>
+
+</body>
+</html>
+
+================================================================================
