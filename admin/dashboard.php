@@ -35,18 +35,37 @@ $query = "SELECT AVG(lives) as avg_lives FROM users";
 $result = mysqli_query($con, $query);
 $stats['avg_lives'] = round(mysqli_fetch_assoc($result)['avg_lives'] ?? 0, 1);
 
-// Subject completion statistics
+// Subject completion statistics - Using category levels
 $subjects = ['english', 'ap', 'filipino', 'math', 'science'];
+
+// Category columns for each subject
+$category_columns = [
+    'english' => ['english_grammar_level', 'english_vocabulary_level', 'english_reading_level', 'english_literature_level', 'english_writing_level'],
+    'math' => ['math_algebra_level', 'math_geometry_level', 'math_statistics_level', 'math_probability_level', 'math_functions_level', 'math_wordproblems_level'],
+    'science' => ['science_biology_level', 'science_chemistry_level', 'science_physics_level', 'science_earthscience_level', 'science_investigation_level'],
+    'filipino' => ['filipino_gramatika_level', 'filipino_panitikan_level', 'filipino_paguunawa_level', 'filipino_talasalitaan_level', 'filipino_wika_level'],
+    'ap' => ['ap_ekonomiks_level', 'ap_kasaysayan_level', 'ap_kontemporaryo_level', 'ap_heograpiya_level', 'ap_pamahalaan_level']
+];
+
 foreach($subjects as $subject) {
-    $query = "SELECT AVG({$subject}_completed_level) as avg_level FROM users";
+    $columns = $category_columns[$subject];
+    $sum_columns = implode(' + ', array_map(function($col) {
+        return "COALESCE($col, 0)";
+    }, $columns));
+    
+    // Calculate average total category levels
+    $query = "SELECT AVG($sum_columns) as avg_level FROM users";
     $result = mysqli_query($con, $query);
     $avg_level_result = mysqli_fetch_assoc($result);
     $avg_level = $avg_level_result["avg_level"] ?? 0;
     $stats["avg_{$subject}_level"] = round($avg_level, 1);
-    $stats["avg_{$subject}_percentage"] = ($avg_level / 10) * 100;
     
-    // users who completed all levels (level 10)
-    $query = "SELECT COUNT(*) as completed FROM users WHERE {$subject}_completed_level = 10";
+    // Max possible level is number of categories * 10
+    $max_level = count($columns) * 10;
+    $stats["avg_{$subject}_percentage"] = ($avg_level / $max_level) * 100;
+    
+    // Users who completed all categories (each category at level 10)
+    $query = "SELECT COUNT(*) as completed FROM users WHERE ($sum_columns) >= $max_level";
     $result = mysqli_query($con, $query);
     $completed_result = mysqli_fetch_assoc($result);
     $stats["{$subject}_completed"] = $completed_result['completed'] ?? 0;
@@ -92,10 +111,15 @@ while($row = mysqli_fetch_assoc($result)) {
     $teacher_subject_stats[$row['handled_subject']] = $row['count'];
 }
 
-// Top users by total score (each level is 100 points)
+// Top users by total score (each category level is 10 points)
+$english_sum = implode(' + ', array_map(function($col) { return "COALESCE($col, 0)"; }, $category_columns['english']));
+$math_sum = implode(' + ', array_map(function($col) { return "COALESCE($col, 0)"; }, $category_columns['math']));
+$science_sum = implode(' + ', array_map(function($col) { return "COALESCE($col, 0)"; }, $category_columns['science']));
+$filipino_sum = implode(' + ', array_map(function($col) { return "COALESCE($col, 0)"; }, $category_columns['filipino']));
+$ap_sum = implode(' + ', array_map(function($col) { return "COALESCE($col, 0)"; }, $category_columns['ap']));
+
 $query = "SELECT player_name, 
-          (english_completed_level + ap_completed_level + filipino_completed_level + 
-           math_completed_level + science_completed_level) * 100 as total_score,
+          (($english_sum) + ($math_sum) + ($science_sum) + ($filipino_sum) + ($ap_sum)) * 10 as total_score,
           feathers, potion
           FROM users 
           ORDER BY total_score DESC 

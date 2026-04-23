@@ -59,17 +59,35 @@ $query = "SELECT AVG(lives) as avg_lives FROM users";
 $result = mysqli_query($con, $query);
 $stats['avg_lives'] = round(mysqli_fetch_assoc($result)['avg_lives'] ?? 0, 1);
 
-// Subject completion statistics - ONLY for handled subjects
+// Subject completion statistics - ONLY for handled subjects - Using category levels
+// Category columns for each subject
+$category_columns = [
+    'english' => ['english_grammar_level', 'english_vocabulary_level', 'english_reading_level', 'english_literature_level', 'english_writing_level'],
+    'math' => ['math_algebra_level', 'math_geometry_level', 'math_statistics_level', 'math_probability_level', 'math_functions_level', 'math_wordproblems_level'],
+    'science' => ['science_biology_level', 'science_chemistry_level', 'science_physics_level', 'science_earthscience_level', 'science_investigation_level'],
+    'filipino' => ['filipino_gramatika_level', 'filipino_panitikan_level', 'filipino_paguunawa_level', 'filipino_talasalitaan_level', 'filipino_wika_level'],
+    'ap' => ['ap_ekonomiks_level', 'ap_kasaysayan_level', 'ap_kontemporaryo_level', 'ap_heograpiya_level', 'ap_pamahalaan_level']
+];
+
 foreach($handled_subjects as $subject) {
-    $query = "SELECT AVG({$subject}_completed_level) as avg_level FROM users";
+    $columns = $category_columns[$subject];
+    $sum_columns = implode(' + ', array_map(function($col) {
+        return "COALESCE($col, 0)";
+    }, $columns));
+    
+    // Calculate average total category levels
+    $query = "SELECT AVG($sum_columns) as avg_level FROM users";
     $result = mysqli_query($con, $query);
     $avg_level_result = mysqli_fetch_assoc($result);
     $avg_level = $avg_level_result["avg_level"] ?? 0;
     $stats["avg_{$subject}_level"] = round($avg_level, 1);
-    $stats["avg_{$subject}_percentage"] = ($avg_level / 10) * 100;
     
-    // users who completed all levels (level 10)
-    $query = "SELECT COUNT(*) as completed FROM users WHERE {$subject}_completed_level = 10";
+    // Max possible level is number of categories * 10
+    $max_level = count($columns) * 10;
+    $stats["avg_{$subject}_percentage"] = ($avg_level / $max_level) * 100;
+    
+    // Users who completed all categories (each category at level 10)
+    $query = "SELECT COUNT(*) as completed FROM users WHERE ($sum_columns) >= $max_level";
     $result = mysqli_query($con, $query);
     $completed_result = mysqli_fetch_assoc($result);
     $stats["{$subject}_completed"] = $completed_result['completed'] ?? 0;
@@ -91,16 +109,20 @@ while($row = mysqli_fetch_assoc($result)) {
     $recent_activities[] = $row;
 }
 
-// Top users by total score - ONLY for handled subjects
+// Top users by total score - ONLY for handled subjects - Using category levels (10 points per level)
 $score_columns = [];
 foreach($handled_subjects as $subject) {
-    $score_columns[] = "{$subject}_completed_level";
+    $columns = $category_columns[$subject];
+    $sum_columns = implode(' + ', array_map(function($col) {
+        return "COALESCE($col, 0)";
+    }, $columns));
+    $score_columns[] = "($sum_columns)";
 }
 
 if(!empty($score_columns)) {
     $score_query = implode(' + ', $score_columns);
     $query = "SELECT player_name, 
-              ($score_query) * 100 as total_score,
+              ($score_query) * 10 as total_score,
               feathers, potion
               FROM users 
               ORDER BY total_score DESC 
@@ -115,16 +137,21 @@ while($row = mysqli_fetch_assoc($result)) {
     $top_users[] = $row;
 }
 
-// Students progress by handled subjects
+// Students progress by handled subjects - Using category levels
 $students_progress = [];
 if(!empty($handled_subjects)) {
-    $subject_columns = [];
+    // Build SELECT clause with category level sums for each handled subject
+    $select_parts = ['player_name', 'student_id'];
     foreach($handled_subjects as $subject) {
-        $subject_columns[] = "{$subject}_completed_level";
+        $columns = $category_columns[$subject];
+        $sum_columns = implode(' + ', array_map(function($col) {
+            return "COALESCE($col, 0)";
+        }, $columns));
+        $select_parts[] = "($sum_columns) as {$subject}_total_level";
     }
-    $columns_query = implode(', ', $subject_columns);
+    $columns_query = implode(', ', $select_parts);
     
-    $query = "SELECT player_name, student_id, $columns_query 
+    $query = "SELECT $columns_query 
               FROM users 
               ORDER BY created_at DESC 
               LIMIT 20";
@@ -607,14 +634,15 @@ if(!empty($handled_subjects)) {
                                                     <small class="text-muted"><?php echo $student['student_id']; ?></small>
                                                 </td>
                                                 <?php foreach($handled_subjects as $subject): 
-                                                    $level = $student["{$subject}_completed_level"] ?? 0;
-                                                    $percentage = ($level / 10) * 100;
+                                                    $level = $student["{$subject}_total_level"] ?? 0;
+                                                    $max_level = count($category_columns[$subject]) * 10;
+                                                    $percentage = ($level / $max_level) * 100;
                                                 ?>
                                                 <td class="text-center">
                                                     <div class="progress" style="height: 15px; width: 80px; margin: 0 auto;">
                                                         <div class="progress-bar bg-<?php echo $subject; ?>" 
                                                              style="width: <?php echo $percentage; ?>%"
-                                                             title="Level <?php echo $level; ?>/10">
+                                                             title="Level <?php echo $level; ?>/<?php echo $max_level; ?>">
                                                         </div>
                                                     </div>
                                                     <small class="text-muted">Lvl <?php echo $level; ?></small>

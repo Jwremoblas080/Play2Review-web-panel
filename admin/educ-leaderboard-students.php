@@ -16,22 +16,38 @@ if(!in_array($subject_filter, $valid_subjects)) {
     $subject_filter = 'overall';
 }
 
+// Category columns for each subject
+$category_columns = [
+    'english' => ['english_grammar_level', 'english_vocabulary_level', 'english_reading_level', 'english_literature_level', 'english_writing_level'],
+    'math' => ['math_algebra_level', 'math_geometry_level', 'math_statistics_level', 'math_probability_level', 'math_functions_level', 'math_wordproblems_level'],
+    'science' => ['science_biology_level', 'science_chemistry_level', 'science_physics_level', 'science_earthscience_level', 'science_investigation_level'],
+    'filipino' => ['filipino_gramatika_level', 'filipino_panitikan_level', 'filipino_paguunawa_level', 'filipino_talasalitaan_level', 'filipino_wika_level'],
+    'ap' => ['ap_ekonomiks_level', 'ap_kasaysayan_level', 'ap_kontemporaryo_level', 'ap_heograpiya_level', 'ap_pamahalaan_level']
+];
+
+// Build SELECT with category level sums
+$select_parts = ['id', 'player_name', 'student_id', 'username', 'feathers', 'lives', 'potion', 'selected_character', 'created_at'];
+foreach(['english', 'math', 'science', 'filipino', 'ap'] as $subject) {
+    $columns = $category_columns[$subject];
+    $sum_columns = implode(' + ', array_map(function($col) {
+        return "COALESCE($col, 0)";
+    }, $columns));
+    $select_parts[] = "($sum_columns) as {$subject}_total_level";
+}
+$select_query = implode(', ', $select_parts);
+
 // Calculate points for each student
-$students_query = "SELECT id, player_name, student_id, username, 
-                  english_completed_level, ap_completed_level, filipino_completed_level, 
-                  math_completed_level, science_completed_level, feathers, lives, potion,
-                  selected_character, created_at
-                  FROM users ORDER BY created_at DESC";
+$students_query = "SELECT $select_query FROM users ORDER BY created_at DESC";
 $students_result = mysqli_query($con, $students_query);
 $students = array();
 
 while($student = mysqli_fetch_assoc($students_result)) {
-    // Calculate points (each level = 100 points)
-    $english_points = $student['english_completed_level'] * 100;
-    $ap_points = $student['ap_completed_level'] * 100;
-    $filipino_points = $student['filipino_completed_level'] * 100;
-    $math_points = $student['math_completed_level'] * 100;
-    $science_points = $student['science_completed_level'] * 100;
+    // Calculate points (each category level = 10 points)
+    $english_points = $student['english_total_level'] * 10;
+    $ap_points = $student['ap_total_level'] * 10;
+    $filipino_points = $student['filipino_total_level'] * 10;
+    $math_points = $student['math_total_level'] * 10;
+    $science_points = $student['science_total_level'] * 10;
     
     $total_points = $english_points + $ap_points + $filipino_points + $math_points + $science_points;
     

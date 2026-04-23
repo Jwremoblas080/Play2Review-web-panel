@@ -100,15 +100,39 @@ if(isset($_POST['action'])) {
     exit();
 }
 
+// Category columns for each subject
+$category_columns = [
+    'english' => ['english_grammar_level', 'english_vocabulary_level', 'english_reading_level', 'english_literature_level', 'english_writing_level'],
+    'math' => ['math_algebra_level', 'math_geometry_level', 'math_statistics_level', 'math_probability_level', 'math_functions_level', 'math_wordproblems_level'],
+    'science' => ['science_biology_level', 'science_chemistry_level', 'science_physics_level', 'science_earthscience_level', 'science_investigation_level'],
+    'filipino' => ['filipino_gramatika_level', 'filipino_panitikan_level', 'filipino_paguunawa_level', 'filipino_talasalitaan_level', 'filipino_wika_level'],
+    'ap' => ['ap_ekonomiks_level', 'ap_kasaysayan_level', 'ap_kontemporaryo_level', 'ap_heograpiya_level', 'ap_pamahalaan_level']
+];
+
+// Build SELECT with category level sums for all subjects
+$select_parts = ['*'];
+foreach(['english', 'math', 'science', 'filipino', 'ap'] as $subject) {
+    $columns = $category_columns[$subject];
+    $sum_columns = implode(' + ', array_map(function($col) {
+        return "COALESCE($col, 0)";
+    }, $columns));
+    $select_parts[] = "($sum_columns) as {$subject}_total_level";
+}
+$select_query = implode(', ', $select_parts);
+
 // Build query based on subject filter - ONLY FOR HANDLED SUBJECTS
 if($subject_filter == 'all') {
-    $query = "SELECT * FROM users ORDER BY created_at DESC";
+    $query = "SELECT $select_query FROM users ORDER BY created_at DESC";
 } else {
     // Only filter by subjects this educator handles
     if(in_array($subject_filter, $handled_subjects)) {
-        $query = "SELECT * FROM users WHERE {$subject_filter}_completed_level > 0 ORDER BY created_at DESC";
+        $columns = $category_columns[$subject_filter];
+        $sum_columns = implode(' + ', array_map(function($col) {
+            return "COALESCE($col, 0)";
+        }, $columns));
+        $query = "SELECT $select_query FROM users WHERE ($sum_columns) > 0 ORDER BY created_at DESC";
     } else {
-        $query = "SELECT * FROM users ORDER BY created_at DESC";
+        $query = "SELECT $select_query FROM users ORDER BY created_at DESC";
     }
 }
 
@@ -121,7 +145,7 @@ while($row = mysqli_fetch_assoc($result)) {
 // Get total students count
 $total_students = count($students);
 
-// Get students with completed levels - ONLY FOR HANDLED SUBJECTS
+// Get students with completed levels - ONLY FOR HANDLED SUBJECTS - Using category levels
 $completed_english = 0;
 $completed_math = 0;
 $completed_ap = 0;
@@ -136,19 +160,32 @@ $active_math = 0;
 $active_science = 0;
 
 foreach($students as $student) {
-    // Only count completion for handled subjects
-    if(in_array('english', $handled_subjects) && $student['english_completed_level'] == 10) $completed_english++;
-    if(in_array('math', $handled_subjects) && $student['math_completed_level'] == 10) $completed_math++;
-    if(in_array('ap', $handled_subjects) && $student['ap_completed_level'] == 10) $completed_ap++;
-    if(in_array('filipino', $handled_subjects) && $student['filipino_completed_level'] == 10) $completed_filipino++;
-    if(in_array('science', $handled_subjects) && $student['science_completed_level'] == 10) $completed_science++;
-    
-    // Only count active students for handled subjects
-    if(in_array('english', $handled_subjects) && $student['english_completed_level'] > 0) $active_english++;
-    if(in_array('ap', $handled_subjects) && $student['ap_completed_level'] > 0) $active_ap++;
-    if(in_array('filipino', $handled_subjects) && $student['filipino_completed_level'] > 0) $active_filipino++;
-    if(in_array('math', $handled_subjects) && $student['math_completed_level'] > 0) $active_math++;
-    if(in_array('science', $handled_subjects) && $student['science_completed_level'] > 0) $active_science++;
+    // Only count completion for handled subjects (all categories at max level)
+    if(in_array('english', $handled_subjects)) {
+        $max_level = count($category_columns['english']) * 10;
+        if($student['english_total_level'] >= $max_level) $completed_english++;
+        if($student['english_total_level'] > 0) $active_english++;
+    }
+    if(in_array('math', $handled_subjects)) {
+        $max_level = count($category_columns['math']) * 10;
+        if($student['math_total_level'] >= $max_level) $completed_math++;
+        if($student['math_total_level'] > 0) $active_math++;
+    }
+    if(in_array('ap', $handled_subjects)) {
+        $max_level = count($category_columns['ap']) * 10;
+        if($student['ap_total_level'] >= $max_level) $completed_ap++;
+        if($student['ap_total_level'] > 0) $active_ap++;
+    }
+    if(in_array('filipino', $handled_subjects)) {
+        $max_level = count($category_columns['filipino']) * 10;
+        if($student['filipino_total_level'] >= $max_level) $completed_filipino++;
+        if($student['filipino_total_level'] > 0) $active_filipino++;
+    }
+    if(in_array('science', $handled_subjects)) {
+        $max_level = count($category_columns['science']) * 10;
+        if($student['science_total_level'] >= $max_level) $completed_science++;
+        if($student['science_total_level'] > 0) $active_science++;
+    }
 }
 ?>
 
@@ -531,9 +568,10 @@ ease;
                                             <td>
                                                 <?php 
                                                 $displayed = 0;
-                                                // Only show progress for handled subjects
+                                                // Only show progress for handled subjects - Using category levels
                                                 foreach($handled_subjects as $subject): 
-                                                    $level = $student[$subject . '_completed_level'];
+                                                    $level = $student[$subject . '_total_level'] ?? 0;
+                                                    $max_level = count($category_columns[$subject]) * 10;
                                                     if($level > 0 || $subject_filter == 'all'): 
                                                         $displayed++;
                                                         if($displayed <= 3): // Show only first 3 subjects to save space
@@ -541,10 +579,10 @@ ease;
                                                 <div class="subject-progress">
                                                     <small>
                                                         <span class="subject-indicator indicator-<?php echo $subject; ?>"></span>
-                                                        <?php echo $subject_names[$subject]; ?>: <?php echo $level; ?>/10
+                                                        <?php echo $subject_names[$subject]; ?>: <?php echo $level; ?>/<?php echo $max_level; ?>
                                                     </small>
                                                     <div class="progress progress-sm">
-                                                        <div class="progress-bar bg-<?php echo $subject; ?>" style="width: <?php echo ($level / 10) * 100; ?>%"></div>
+                                                        <div class="progress-bar bg-<?php echo $subject; ?>" style="width: <?php echo ($level / $max_level) * 100; ?>%"></div>
                                                     </div>
                                                 </div>
                                                 <?php 

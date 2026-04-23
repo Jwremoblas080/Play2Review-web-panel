@@ -17,17 +17,60 @@ try {
     }
     
     $sql = "SELECT username, player_name, 
-                   COALESCE(english_completed_level, 0) as english_completed_level, 
-                   COALESCE(ap_completed_level, 0) as ap_completed_level, 
-                   COALESCE(filipino_completed_level, 0) as filipino_completed_level, 
-                   COALESCE(math_completed_level, 0) as math_completed_level, 
-                   COALESCE(science_completed_level, 0) as science_completed_level 
+                   -- English categories
+                   COALESCE(english_grammar_level, 0) as english_grammar_level,
+                   COALESCE(english_vocabulary_level, 0) as english_vocabulary_level,
+                   COALESCE(english_reading_level, 0) as english_reading_level,
+                   COALESCE(english_literature_level, 0) as english_literature_level,
+                   COALESCE(english_writing_level, 0) as english_writing_level,
+                   -- Math categories
+                   COALESCE(math_algebra_level, 0) as math_algebra_level,
+                   COALESCE(math_geometry_level, 0) as math_geometry_level,
+                   COALESCE(math_statistics_level, 0) as math_statistics_level,
+                   COALESCE(math_probability_level, 0) as math_probability_level,
+                   COALESCE(math_functions_level, 0) as math_functions_level,
+                   COALESCE(math_wordproblems_level, 0) as math_wordproblems_level,
+                   -- Science categories
+                   COALESCE(science_biology_level, 0) as science_biology_level,
+                   COALESCE(science_chemistry_level, 0) as science_chemistry_level,
+                   COALESCE(science_physics_level, 0) as science_physics_level,
+                   COALESCE(science_earthscience_level, 0) as science_earthscience_level,
+                   COALESCE(science_investigation_level, 0) as science_investigation_level,
+                   -- Filipino categories
+                   COALESCE(filipino_gramatika_level, 0) as filipino_gramatika_level,
+                   COALESCE(filipino_panitikan_level, 0) as filipino_panitikan_level,
+                   COALESCE(filipino_paguunawa_level, 0) as filipino_paguunawa_level,
+                   COALESCE(filipino_talasalitaan_level, 0) as filipino_talasalitaan_level,
+                   COALESCE(filipino_wika_level, 0) as filipino_wika_level,
+                   -- AP categories
+                   COALESCE(ap_ekonomiks_level, 0) as ap_ekonomiks_level,
+                   COALESCE(ap_kasaysayan_level, 0) as ap_kasaysayan_level,
+                   COALESCE(ap_kontemporaryo_level, 0) as ap_kontemporaryo_level,
+                   COALESCE(ap_heograpiya_level, 0) as ap_heograpiya_level,
+                   COALESCE(ap_pamahalaan_level, 0) as ap_pamahalaan_level
             FROM users 
-            ORDER BY (COALESCE(english_completed_level, 0) + 
-                     COALESCE(ap_completed_level, 0) + 
-                     COALESCE(filipino_completed_level, 0) + 
-                     COALESCE(math_completed_level, 0) + 
-                     COALESCE(science_completed_level, 0)) DESC";
+            ORDER BY (
+                -- Sum all English categories
+                COALESCE(english_grammar_level, 0) + COALESCE(english_vocabulary_level, 0) + 
+                COALESCE(english_reading_level, 0) + COALESCE(english_literature_level, 0) + 
+                COALESCE(english_writing_level, 0) +
+                -- Sum all Math categories
+                COALESCE(math_algebra_level, 0) + COALESCE(math_geometry_level, 0) + 
+                COALESCE(math_statistics_level, 0) + COALESCE(math_probability_level, 0) + 
+                COALESCE(math_functions_level, 0) + COALESCE(math_wordproblems_level, 0) +
+                -- Sum all Science categories
+                COALESCE(science_biology_level, 0) + COALESCE(science_chemistry_level, 0) + 
+                COALESCE(science_physics_level, 0) + COALESCE(science_earthscience_level, 0) + 
+                COALESCE(science_investigation_level, 0) +
+                -- Sum all Filipino categories
+                COALESCE(filipino_gramatika_level, 0) + COALESCE(filipino_panitikan_level, 0) + 
+                COALESCE(filipino_paguunawa_level, 0) + COALESCE(filipino_talasalitaan_level, 0) + 
+                COALESCE(filipino_wika_level, 0) +
+                -- Sum all AP categories
+                COALESCE(ap_ekonomiks_level, 0) + COALESCE(ap_kasaysayan_level, 0) + 
+                COALESCE(ap_kontemporaryo_level, 0) + COALESCE(ap_heograpiya_level, 0) + 
+                COALESCE(ap_pamahalaan_level, 0)
+            ) DESC";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute();
@@ -35,22 +78,62 @@ try {
     $leaderboard = array();
     
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $english = (int)$row['english_completed_level'];
-        $ap = (int)$row['ap_completed_level'];
-        $filipino = (int)$row['filipino_completed_level'];
-        $math = (int)$row['math_completed_level'];
-        $science = (int)$row['science_completed_level'];
+        // Calculate English score from all English categories
+        $englishScore = (
+            (int)$row['english_grammar_level'] +
+            (int)$row['english_vocabulary_level'] +
+            (int)$row['english_reading_level'] +
+            (int)$row['english_literature_level'] +
+            (int)$row['english_writing_level']
+        ) * 10;
         
-        $totalScore = ($english + $ap + $filipino + $math + $science) * 100;
+        // Calculate Math score from all Math categories
+        $mathScore = (
+            (int)$row['math_algebra_level'] +
+            (int)$row['math_geometry_level'] +
+            (int)$row['math_statistics_level'] +
+            (int)$row['math_probability_level'] +
+            (int)$row['math_functions_level'] +
+            (int)$row['math_wordproblems_level']
+        ) * 10;
+        
+        // Calculate Science score from all Science categories
+        $scienceScore = (
+            (int)$row['science_biology_level'] +
+            (int)$row['science_chemistry_level'] +
+            (int)$row['science_physics_level'] +
+            (int)$row['science_earthscience_level'] +
+            (int)$row['science_investigation_level']
+        ) * 10;
+        
+        // Calculate Filipino score from all Filipino categories
+        $filipinoScore = (
+            (int)$row['filipino_gramatika_level'] +
+            (int)$row['filipino_panitikan_level'] +
+            (int)$row['filipino_paguunawa_level'] +
+            (int)$row['filipino_talasalitaan_level'] +
+            (int)$row['filipino_wika_level']
+        ) * 10;
+        
+        // Calculate AP score from all AP categories
+        $apScore = (
+            (int)$row['ap_ekonomiks_level'] +
+            (int)$row['ap_kasaysayan_level'] +
+            (int)$row['ap_kontemporaryo_level'] +
+            (int)$row['ap_heograpiya_level'] +
+            (int)$row['ap_pamahalaan_level']
+        ) * 10;
+        
+        $totalScore = $englishScore + $mathScore + $scienceScore + $filipinoScore + $apScore;
         
         $entry = new stdClass();
         $entry->username = $row['username'] ?? '';
         $entry->playerName = $row['player_name'] ?? '';
-        $entry->englishScore = $english * 100;
-        $entry->apScore = $ap * 100;
-        $entry->filipinoScore = $filipino * 100;
-        $entry->mathScore = $math * 100;
-        $entry->scienceScore = $science * 100;
+        $entry->englishScore = $englishScore;
+        $entry->mathScore = $mathScore;
+        $entry->scienceScore = $scienceScore;
+        $entry->filipinoScore = $filipinoScore;
+        $entry->apScore = $apScore;
         $entry->totalScore = $totalScore;
         
         $leaderboard[] = $entry;
