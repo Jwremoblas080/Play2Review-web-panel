@@ -177,6 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_quiz'])) {
         $subject_name = mysqli_real_escape_string($con, $_POST['subject_name']);
         $quiz_level = mysqli_real_escape_string($con, $_POST['quiz_level']);
+        $category = mysqli_real_escape_string($con, $_POST['category']);
         $question = mysqli_real_escape_string($con, $_POST['question']);
         $answer_a = mysqli_real_escape_string($con, $_POST['answer_a']);
         $answer_b = mysqli_real_escape_string($con, $_POST['answer_b']);
@@ -184,8 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $answer_d = mysqli_real_escape_string($con, $_POST['answer_d']);
         $correct_answer = mysqli_real_escape_string($con, $_POST['correct_answer']);
 
-        $query = "INSERT INTO quizes (teacher_id, subject_name, quiz_level, question, answer_a, answer_b, answer_c, answer_d, correct_answer_number) 
-                  VALUES ('$educator_id', '$subject_name', '$quiz_level', '$question', '$answer_a', '$answer_b', '$answer_c', '$answer_d', '$correct_answer')";
+        $query = "INSERT INTO quizes (teacher_id, subject_name, quiz_level, category, question, answer_a, answer_b, answer_c, answer_d, correct_answer_number) 
+                  VALUES ('$educator_id', '$subject_name', '$quiz_level', '$category', '$question', '$answer_a', '$answer_b', '$answer_c', '$answer_d', '$correct_answer')";
         
         if(mysqli_query($con, $query)) {
             $new_quiz_id = mysqli_insert_id($con);
@@ -194,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_values = [
                 'subject_name' => $subject_name,
                 'quiz_level' => $quiz_level,
+                'category' => $category,
                 'question' => $question,
                 'answer_a' => $answer_a,
                 'answer_b' => $answer_b,
@@ -227,6 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz_id = mysqli_real_escape_string($con, $_POST['quiz_id']);
         $subject_name = mysqli_real_escape_string($con, $_POST['subject_name']);
         $quiz_level = mysqli_real_escape_string($con, $_POST['quiz_level']);
+        $category = mysqli_real_escape_string($con, $_POST['category']);
         $question = mysqli_real_escape_string($con, $_POST['question']);
         $answer_a = mysqli_real_escape_string($con, $_POST['answer_a']);
         $answer_b = mysqli_real_escape_string($con, $_POST['answer_b']);
@@ -242,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query = "UPDATE quizes SET 
                   subject_name = '$subject_name', 
                   quiz_level = '$quiz_level', 
+                  category = '$category',
                   question = '$question', 
                   answer_a = '$answer_a', 
                   answer_b = '$answer_b', 
@@ -256,6 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_values = [
                 'subject_name' => $subject_name,
                 'quiz_level' => $quiz_level,
+                'category' => $category,
                 'question' => $question,
                 'answer_a' => $answer_a,
                 'answer_b' => $answer_b,
@@ -267,6 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $old_values = [
                 'subject_name' => $old_data['subject_name'],
                 'quiz_level' => $old_data['quiz_level'],
+                'category' => $old_data['category'] ?? '',
                 'question' => $old_data['question'],
                 'answer_a' => $old_data['answer_a'],
                 'answer_b' => $old_data['answer_b'],
@@ -965,8 +971,8 @@ $subject_names = [
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Subject</label>
-                                        <select name="subject_name" class="form-control" required>
+                                        <label class="form-label">Subject <span class="text-danger">*</span></label>
+                                        <select name="subject_name" id="add-subject-select" class="form-control" required>
                                             <option value="">Select Subject</option>
                                             <?php foreach ($handled_subjects as $subject): ?>
                                                 <option value="<?php echo $subject; ?>" <?php echo ($subject === $current_subject) ? 'selected' : ''; ?>>
@@ -978,7 +984,7 @@ $subject_names = [
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Quiz Level</label>
+                                        <label class="form-label">Quiz Level <span class="text-danger">*</span></label>
                                         <select name="quiz_level" class="form-control" required>
                                             <option value="">Select Level</option>
                                             <?php for ($i = 1; $i <= 10; $i++): ?>
@@ -990,8 +996,74 @@ $subject_names = [
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Dynamic Category Containers -->
                             <div class="mb-3">
-                                <label class="form-label">Question</label>
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                
+                                <!-- English Categories -->
+                                <div id="add-english-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('english') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Math Categories -->
+                                <div id="add-math-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('math') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Filipino Categories -->
+                                <div id="add-filipino-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('filipino') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- AP Categories -->
+                                <div id="add-ap-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('ap') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Science Categories -->
+                                <div id="add-science-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('science') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Question <span class="text-danger">*</span></label>
                                 <textarea name="question" class="form-control" rows="3" placeholder="Enter the question..." required></textarea>
                             </div>
                             <div class="row">
@@ -1050,8 +1122,8 @@ $subject_names = [
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Subject</label>
-                                        <select name="subject_name" id="edit_subject_name" class="form-control" required>
+                                        <label class="form-label">Subject <span class="text-danger">*</span></label>
+                                        <select name="subject_name" id="edit-subject-select" class="form-control" required>
                                             <?php foreach ($handled_subjects as $subject): ?>
                                                 <option value="<?php echo $subject; ?>"><?php echo $subject_names[$subject]; ?></option>
                                             <?php endforeach; ?>
@@ -1060,7 +1132,7 @@ $subject_names = [
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Quiz Level</label>
+                                        <label class="form-label">Quiz Level <span class="text-danger">*</span></label>
                                         <select name="quiz_level" id="edit_quiz_level" class="form-control" required>
                                             <?php for ($i = 1; $i <= 10; $i++): ?>
                                                 <option value="<?php echo $i; ?>">Level <?php echo $i; ?></option>
@@ -1069,8 +1141,74 @@ $subject_names = [
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Dynamic Category Containers for Edit -->
                             <div class="mb-3">
-                                <label class="form-label">Question</label>
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                
+                                <!-- English Categories -->
+                                <div id="edit-english-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('english') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Math Categories -->
+                                <div id="edit-math-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('math') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Filipino Categories -->
+                                <div id="edit-filipino-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('filipino') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- AP Categories -->
+                                <div id="edit-ap-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('ap') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Science Categories -->
+                                <div id="edit-science-category" class="category-container" style="display: none;">
+                                    <select name="category" class="form-control category-select" disabled>
+                                        <option value="">Select Category</option>
+                                        <?php foreach (getCategoriesBySubject('science') as $key => $label): ?>
+                                            <option value="<?php echo htmlspecialchars($key); ?>">
+                                                <?php echo htmlspecialchars($label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Question <span class="text-danger">*</span></label>
                                 <textarea name="question" id="edit_question" class="form-control" rows="3" required></textarea>
                             </div>
                             <div class="row">
@@ -1197,12 +1335,65 @@ $subject_names = [
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Edit button functionality
+        // ==================== CATEGORY DROPDOWN SWITCHING ====================
+        // Function to show/hide category dropdowns based on selected subject
+        function updateCategoryDropdown(subjectSelectId, containerPrefix) {
+            const subjectSelect = document.getElementById(subjectSelectId);
+            if (!subjectSelect) return;
+            
+            const selectedSubject = subjectSelect.value;
+            
+            // Hide all category containers and disable their selects
+            document.querySelectorAll('.category-container').forEach(container => {
+                container.style.display = 'none';
+                const select = container.querySelector('.category-select');
+                if (select) {
+                    select.disabled = true;
+                    select.removeAttribute('required');
+                }
+            });
+            
+            // Show the selected subject's category container and enable its select
+            if (selectedSubject) {
+                const targetContainer = document.getElementById(`${containerPrefix}-${selectedSubject}-category`);
+                if (targetContainer) {
+                    targetContainer.style.display = 'block';
+                    const select = targetContainer.querySelector('.category-select');
+                    if (select) {
+                        select.disabled = false;
+                        select.setAttribute('required', 'required');
+                    }
+                }
+            }
+        }
+        
+        // Add event listeners for subject dropdowns
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add Quiz Modal - subject change
+            const addSubjectSelect = document.getElementById('add-subject-select');
+            if (addSubjectSelect) {
+                addSubjectSelect.addEventListener('change', function() {
+                    updateCategoryDropdown('add-subject-select', 'add');
+                });
+                // Trigger on page load if subject is pre-selected
+                updateCategoryDropdown('add-subject-select', 'add');
+            }
+            
+            // Edit Quiz Modal - subject change
+            const editSubjectSelect = document.getElementById('edit-subject-select');
+            if (editSubjectSelect) {
+                editSubjectSelect.addEventListener('change', function() {
+                    updateCategoryDropdown('edit-subject-select', 'edit');
+                });
+            }
+        });
+        
+        // ==================== EDIT BUTTON FUNCTIONALITY ====================
         document.querySelectorAll('.btn-edit').forEach(button => {
             button.addEventListener('click', function() {
                 const quiz = JSON.parse(this.dataset.quiz);
                 document.getElementById('edit_quiz_id').value = quiz.id;
-                document.getElementById('edit_subject_name').value = quiz.subject_name;
+                document.getElementById('edit-subject-select').value = quiz.subject_name;
                 document.getElementById('edit_quiz_level').value = quiz.quiz_level;
                 document.getElementById('edit_question').value = quiz.question;
                 document.getElementById('edit_answer_a').value = quiz.answer_a;
@@ -1210,19 +1401,34 @@ $subject_names = [
                 document.getElementById('edit_answer_c').value = quiz.answer_c;
                 document.getElementById('edit_answer_d').value = quiz.answer_d;
                 document.getElementById('edit_correct_answer').value = quiz.correct_answer_number;
+                
+                // Update category dropdown for the selected subject
+                updateCategoryDropdown('edit-subject-select', 'edit');
+                
+                // Set the category value if it exists
+                setTimeout(() => {
+                    const categoryContainer = document.getElementById(`edit-${quiz.subject_name}-category`);
+                    if (categoryContainer) {
+                        const categorySelect = categoryContainer.querySelector('.category-select');
+                        if (categorySelect && quiz.category) {
+                            categorySelect.value = quiz.category;
+                        }
+                    }
+                }, 50);
             });
         });
 
-        // Delete button functionality
+        // ==================== DELETE BUTTON FUNCTIONALITY ====================
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.addEventListener('click', function() {
                 document.getElementById('delete_quiz_id').value = this.dataset.quizId;
                 document.getElementById('delete_subject_name').value = this.dataset.subject;
-                document.getElementById('delete_question_text').textContent = this.dataset.question + '...';
+                document.getElementById('delete_question_text').textContent = this.dataset.question;
             });
         });
-
-        // Auto-select current level in add modal
+    </script>
+</body>
+</html>        // Auto-select current level in add modal
         document.addEventListener('DOMContentLoaded', function() {
             const currentLevel = '<?php echo $current_level; ?>';
             if (currentLevel !== 'all') {
