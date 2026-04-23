@@ -1,41 +1,55 @@
 <?php
-// Detect environment
-if ($_SERVER['SERVER_NAME'] == 'localhost') {
-    // Localhost config
-    $servername = "localhost";
-    $dbname = "play2review_db";
-    $dbusername = "root";
-    $dbpassword = "";
-} else {
-    // Hostinger config
-    $servername = "localhost";
-    $dbname = "u551482737_play2review_db";
-    $dbusername = "u551482737_play2review_db";
-    $dbpassword = "4!noXC/l:D";
+
+$servername = "localhost";
+$dbname = "u551482737_play2review_db";
+$dbusername = "u551482737_play2review_db";
+$dbpassword = "4!noXC/l:D";
+
+// Database configuration
+
+
+$host = $servername;
+$username = $dbusername;
+$password = $dbpassword;
+$database = $dbname;
+
+// Database configuration
+define('DB_HOST', $servername);
+define('DB_USER', $dbusername);
+define('DB_PASS', $dbpassword);
+define('DB_NAME', $dbname);
+
+$SERVER = $servername;
+$USERNAME = $dbusername;
+$PASSWORD = $dbpassword;
+$DB_NAME = $dbname;
+
+// Create connection
+$conn = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $dbpassword);
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$connsi = new mysqli($host, $username, $password, $database);
+if ($connsi->connect_error) {
+    die(json_encode(["success" => false, "message" => "Database connection failed"]));
 }
 
-// Create ONE connection only (choose mysqli OR PDO)
-
-// ✅ Option 1: mysqli
-$conn = new mysqli($servername, $dbusername, $dbpassword, $dbname);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+$con = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if (mysqli_connect_errno()) {
+    die("Database connection failed: " . mysqli_connect_error());
 }
 
-$conn->set_charset("utf8");
-
-// Start session
+mysqli_set_charset($con, "utf8");
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Base URL
-if ($_SERVER['SERVER_NAME'] == 'localhost') {
-    $urlconnection = "http://localhost/play2review/";
-} else {
-    $urlconnection = "https://blanchedalmond-shrew-238703.hostingersite.com/";
+$DB = mysqli_connect($SERVER, $USERNAME, $PASSWORD, $DB_NAME);
+    
+if (!$DB) {
+    die("Connection failed: " . mysqli_connect_error());
 }
+
+$urlconnection = "localhost/play2review/";
 
 ob_start();
 ?>
+    
