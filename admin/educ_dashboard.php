@@ -1,5 +1,6 @@
 <?php
 require_once('../configurations/configurations.php');
+require_once('category-config.php');
 
 // Check educator privileges
 if(!isset($_SESSION['priviledges']) || $_SESSION['priviledges'] != 'educator') {
@@ -282,6 +283,21 @@ if(!empty($handled_subjects)) {
             position: relative;
         }
         
+        .category-breakdown {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .category-breakdown h6 {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
         .handled-subject-badge {
             position: absolute;
             top: -10px;
@@ -525,8 +541,11 @@ if(!empty($handled_subjects)) {
                                             $percentage = $stats["avg_{$subject}_percentage"] ?? 0;
                                             $avg_level = $stats["avg_{$subject}_level"] ?? 0;
                                             $completed_count = $stats["{$subject}_completed"] ?? 0;
+                                            
+                                            // Get categories for this subject
+                                            $categories = getCategoriesBySubject($subject);
                                         ?>
-                                        <div class="col-md-4">
+                                        <div class="col-md-6">
                                             <div class="subject-progress">
                                                 <span class="handled-subject-badge">
                                                     <i class="fas fa-chalkboard-teacher"></i> Your Subject
@@ -535,9 +554,9 @@ if(!empty($handled_subjects)) {
                                                     <span class="text-uppercase font-weight-bold text-<?php echo $subject; ?>">
                                                         <?php echo $subject_names[$subject]; ?>
                                                     </span>
-                                                    <span class="badge badge-secondary"><?php echo $avg_level; ?>/10 Levels</span>
+                                                    <span class="badge badge-secondary"><?php echo $avg_level; ?>/<?php echo count($categories) * 10; ?> Levels</span>
                                                 </div>
-                                                <div class="progress">
+                                                <div class="progress mb-3">
                                                     <div class="progress-bar bg-<?php echo $subject; ?>" 
                                                          role="progressbar" 
                                                          style="width: <?php echo $percentage; ?>% !important;"
@@ -547,7 +566,34 @@ if(!empty($handled_subjects)) {
                                                         <?php echo round($percentage, 1); ?>%
                                                     </div>
                                                 </div>
-                                                <small class="text-muted mt-1 d-block">
+                                                
+                                                <!-- Category Breakdown -->
+                                                <div class="category-breakdown">
+                                                    <h6 class="text-muted mb-2"><i class="fas fa-list"></i> Category Progress:</h6>
+                                                    <?php foreach($categories as $cat_key => $cat_label): 
+                                                        $column_name = getCategoryLevelColumnName($subject, $cat_key);
+                                                        // Get average level for this category
+                                                        $cat_query = "SELECT AVG(COALESCE($column_name, 0)) as avg_cat_level FROM users";
+                                                        $cat_result = mysqli_query($con, $cat_query);
+                                                        $cat_avg = mysqli_fetch_assoc($cat_result)['avg_cat_level'] ?? 0;
+                                                        $cat_percentage = ($cat_avg / 10) * 100;
+                                                    ?>
+                                                    <div class="mb-2">
+                                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                                            <small class="text-muted"><?php echo $cat_label; ?></small>
+                                                            <small class="badge badge-light">Lvl <?php echo round($cat_avg, 1); ?>/10</small>
+                                                        </div>
+                                                        <div class="progress" style="height: 8px;">
+                                                            <div class="progress-bar bg-<?php echo $subject; ?>" 
+                                                                 style="width: <?php echo $cat_percentage; ?>%"
+                                                                 title="<?php echo $cat_label; ?>: Level <?php echo round($cat_avg, 1); ?>/10">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                                
+                                                <small class="text-muted mt-2 d-block">
                                                     <i class="fas fa-check-circle text-success"></i>
                                                     <?php echo $completed_count; ?> students completed all levels
                                                 </small>
