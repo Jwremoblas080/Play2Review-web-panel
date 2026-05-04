@@ -438,9 +438,9 @@ while($row = mysqli_fetch_assoc($result)) {
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Subject Completion Progress</h3>
+                                <h3 class="card-title">Subject Category Completion Progress</h3>
                                 <div class="card-tools">
-                                    <span class="badge badge-light">Max Level: 10</span>
+                                    <span class="badge badge-light">Based on Category Levels</span>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -449,6 +449,8 @@ while($row = mysqli_fetch_assoc($result)) {
                                         $percentage = $stats["avg_{$subject}_percentage"];
                                         $avg_level = $stats["avg_{$subject}_level"];
                                         $completed_count = $stats["{$subject}_completed"];
+                                        $num_categories = count($category_columns[$subject]);
+                                        $max_level = $num_categories * 10;
                                     ?>
                                     <div class="col-md-4">
                                         <div class="subject-progress">
@@ -456,7 +458,7 @@ while($row = mysqli_fetch_assoc($result)) {
                                                 <span class="text-uppercase font-weight-bold text-<?php echo $subject; ?>">
                                                     <?php echo ucfirst($subject); ?>
                                                 </span>
-                                                <span class="badge badge-secondary"><?php echo $avg_level; ?>/10 Levels</span>
+                                                <span class="badge badge-secondary"><?php echo round($avg_level, 1); ?>/<?php echo $max_level; ?></span>
                                             </div>
                                             <div class="progress">
                                                 <div class="progress-bar bg-<?php echo $subject; ?>" 
@@ -469,8 +471,10 @@ while($row = mysqli_fetch_assoc($result)) {
                                                 </div>
                                             </div>
                                             <small class="text-muted mt-1 d-block">
+                                                <i class="fas fa-layer-group text-info"></i>
+                                                <?php echo $num_categories; ?> categories • 
                                                 <i class="fas fa-check-circle text-success"></i>
-                                                <?php echo $completed_count; ?> students completed all levels
+                                                <?php echo $completed_count; ?> completed all
                                             </small>
                                         </div>
                                     </div>
