@@ -378,7 +378,7 @@ while($row = mysqli_fetch_assoc($result)) {
                             <div class="icon">
                                 <i class="fas fa-users stat-icon"></i>
                             </div>
-                            <a href="manage-users.php" class="small-box-footer">
+                            <a href="manage-students.php" class="small-box-footer">
                                 View All <i class="fas fa-arrow-circle-right"></i>
                             </a>
                         </div>
@@ -394,7 +394,7 @@ while($row = mysqli_fetch_assoc($result)) {
                             <div class="icon">
                                 <i class="fas fa-chalkboard-teacher stat-icon"></i>
                             </div>
-                            <a href="manage-teachers.php" class="small-box-footer">
+                            <a href="manage-educators.php" class="small-box-footer">
                                 View All <i class="fas fa-arrow-circle-right"></i>
                             </a>
                         </div>
