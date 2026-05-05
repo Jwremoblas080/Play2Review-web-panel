@@ -410,9 +410,7 @@ while($row = mysqli_fetch_assoc($result)) {
                             <div class="icon">
                                 <i class="fas fa-wine-bottle stat-icon"></i>
                             </div>
-                            <a href="#" class="small-box-footer">
-                                View Details <i class="fas fa-arrow-circle-right"></i>
-                            </a>
+                      
                         </div>
                     </div>
                     
@@ -426,9 +424,7 @@ while($row = mysqli_fetch_assoc($result)) {
                             <div class="icon">
                                 <i class="fas fa-heart stat-icon"></i>
                             </div>
-                            <a href="#" class="small-box-footer">
-                                View Details <i class="fas fa-arrow-circle-right"></i>
-                            </a>
+                       
                         </div>
                     </div>
                 </div>
