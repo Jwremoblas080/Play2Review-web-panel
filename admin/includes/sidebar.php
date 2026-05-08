@@ -58,6 +58,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="comprehensive-analytics.php" class="nav-link <?php if (basename(htmlspecialchars($_SERVER["PHP_SELF"], ENT_QUOTES, "utf-8")) == 'comprehensive-analytics.php') echo 'active'; ?>" 
+                       style="color: #2c3e50; border-left: 3px solid transparent; transition: all 0.3s ease;">
+                        <i class="nav-icon fas fa-chart-bar" style="color: #6c757d;"></i>
+                        <p>Data Analytics </p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="manage-students.php" class="nav-link <?php if (basename(htmlspecialchars($_SERVER["PHP_SELF"], ENT_QUOTES, "utf-8")) == 'manage-students.php') echo 'active'; ?>" 
                        style="color: #2c3e50; border-left: 3px solid transparent; transition: all 0.3s ease;">
                         <i class="nav-icon fas fa-users" style="color: #6c757d;"></i>

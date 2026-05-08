@@ -57,61 +57,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // ========================= CSV BULK IMPORT =========================
+    // ========================= PDF TEMPLATE DOWNLOAD =========================
+    if (isset($_POST['download_template_pdf'])) {
+        $subject_name  = $_POST['subject_name'] ?? 'english';
+        $subject_labels = ['english'=>'English','ap'=>'Araling Panlipunan','filipino'=>'Filipino','math'=>'Mathematics','science'=>'Science'];
+        $subject_label  = $subject_labels[$subject_name] ?? ucfirst($subject_name);
+        $categories     = getCategoriesBySubject($subject_name);
+
+        require_once('includes/generate_quiz_pdf_final.php');
+        generateQuizTemplatePdfFinal($subject_name, $categories, $subject_label);
+        exit();
+    }
+
+    // ========================= DOCX TEMPLATE DOWNLOAD =========================
+    if (isset($_POST['download_template_docx'])) {
+        $subject_name  = $_POST['subject_name'] ?? 'english';
+        $subject_labels = ['english'=>'English','ap'=>'Araling Panlipunan','filipino'=>'Filipino','math'=>'Mathematics','science'=>'Science'];
+        $subject_label  = $subject_labels[$subject_name] ?? ucfirst($subject_name);
+        $categories     = getCategoriesBySubject($subject_name);
+
+        require_once('includes/generate_quiz_docx.php');
+        generateQuizTemplateDocx($subject_name, $categories, $subject_label);
+        exit();
+    }
+
+    // ========================= UNIFIED BULK IMPORT (CSV, XLSX, DOCX) =========================
     if (isset($_POST['import_csv'])) {
         $subject_name = mysqli_real_escape_string($con, $_POST['import_subject']);
 
         if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-            $_SESSION['error'] = "Please select a valid CSV file.";
+            $_SESSION['error'] = "Please select a valid file.";
             header("Location: manage-quizes.php?subject=$subject_name");
             exit();
         }
 
         $file = $_FILES['csv_file']['tmp_name'];
-        $handle = fopen($file, 'r');
+        $filename = $_FILES['csv_file']['name'];
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-        if (!$handle) {
-            $_SESSION['error'] = "Could not open the uploaded file.";
-            header("Location: manage-quizes.php?subject=$subject_name");
-            exit();
-        }
+        $data_rows = [];
 
-        // Strip UTF-8 BOM from the start of the file if present
-        $bom = fread($handle, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($handle); // not a BOM, go back to start
-        }
-
-        // Skip rows until we find the actual header row (contains 'subject_name')
-        // Strip BOM and normalize — Excel CSV exports often include a UTF-8 BOM
-        $found_header = false;
-        while (($row = fgetcsv($handle)) !== false) {
-            $first = trim($row[0] ?? '');
-            // Strip UTF-8 BOM if present
-            $first = ltrim($first, "\xEF\xBB\xBF");
-            // Strip any non-printable/invisible characters
-            $first = preg_replace('/[\x00-\x1F\x7F\xC2\xA0]/u', '', $first);
-            $first = strtolower($first);
-            // Match exact or partial (handles extra whitespace/encoding quirks)
-            if ($first === 'subject_name' || strpos($first, 'subject_name') !== false) {
-                $found_header = true;
-                break;
+        // ========== HANDLE DIFFERENT FILE TYPES ==========
+        if ($extension === 'csv') {
+            // CSV Import
+            $handle = fopen($file, 'r');
+            if (!$handle) {
+                $_SESSION['error'] = "Could not open the uploaded file.";
+                header("Location: manage-quizes.php?subject=$subject_name");
+                exit();
             }
-        }
 
-        if (!$found_header) {
+            // Strip UTF-8 BOM
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
+            }
+
+            // Find header row
+            $found_header = false;
+            while (($row = fgetcsv($handle)) !== false) {
+                $first = trim($row[0] ?? '');
+                $first = ltrim($first, "\xEF\xBB\xBF");
+                $first = preg_replace('/[\x00-\x1F\x7F\xC2\xA0]/u', '', $first);
+                $first = strtolower($first);
+                if ($first === 'subject_name' || strpos($first, 'subject_name') !== false) {
+                    $found_header = true;
+                    break;
+                }
+            }
+
+            if (!$found_header) {
+                fclose($handle);
+                $_SESSION['error'] = "Could not find the header row in CSV file.";
+                header("Location: manage-quizes.php?subject=$subject_name");
+                exit();
+            }
+
+            // Read data rows
+            while (($row = fgetcsv($handle)) !== false) {
+                if (count($row) >= 9) {
+                    $data_rows[] = $row;
+                }
+            }
             fclose($handle);
-            $_SESSION['error'] = "Could not find the header row. Make sure you saved the file as CSV (comma-separated) from Excel.";
+
+        } elseif ($extension === 'xlsx') {
+            // XLSX Import
+            require_once('includes/import_quiz_xlsx.php');
+            $result = importQuizFromXlsx($file);
+            if ($result['success']) {
+                $data_rows = $result['data'];
+            } else {
+                $_SESSION['error'] = $result['error'];
+                header("Location: manage-quizes.php?subject=$subject_name");
+                exit();
+            }
+
+        } elseif ($extension === 'docx') {
+            // DOCX Import
+            require_once('includes/import_quiz_docx.php');
+            $result = importQuizFromDocx($file);
+            if ($result['success']) {
+                $data_rows = $result['data'];
+            } else {
+                $_SESSION['error'] = $result['error'];
+                header("Location: manage-quizes.php?subject=$subject_name");
+                exit();
+            }
+
+        } elseif ($extension === 'pdf') {
+            // PDF Import
+            require_once('includes/import_quiz_pdf.php');
+            $result = importQuizFromPdf($file);
+            if ($result['success']) {
+                $data_rows = $result['data'];
+            } else {
+                $_SESSION['error'] = $result['error'];
+                header("Location: manage-quizes.php?subject=$subject_name");
+                exit();
+            }
+
+        } else {
+            $_SESSION['error'] = "Unsupported file format. Please upload CSV, XLSX, DOCX, or PDF files.";
             header("Location: manage-quizes.php?subject=$subject_name");
             exit();
         }
 
+        // ========== PROCESS DATA ROWS ==========
         $imported = 0;
         $skipped  = 0;
 
-        while (($row = fgetcsv($handle)) !== false) {
-            // Skip hint row (contains 'e.g.') and empty rows
-            if (count($row) < 9) { $skipped++; continue; }
+        foreach ($data_rows as $row) {
+            if (count($row) < 9) { 
+                $skipped++; 
+                continue; 
+            }
 
             $first_cell = strtolower(trim($row[0]));
             // Skip hint row and empty rows
@@ -149,9 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $skipped++;
             }
         }
-        fclose($handle);
 
-        $_SESSION['message'] = "CSV Import complete: $imported question(s) added" . ($skipped > 0 ? ", $skipped row(s) skipped." : ".");
+        $_SESSION['message'] = "Import complete: $imported question(s) added" . ($skipped > 0 ? ", $skipped row(s) skipped." : ".");
         header("Location: manage-quizes.php?subject=$subject_name");
         exit();
     }
@@ -852,14 +931,41 @@ $subject_names = [
                                 <i class="fas fa-plus"></i> Add New Question
                             </button>
                             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                                <i class="fas fa-file-csv"></i> Import CSV
+                                <i class="fas fa-file-import"></i> Import Questions
                             </button>
-                            <form method="POST" class="d-inline">
-                                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                <button type="submit" name="download_template" class="btn btn-outline-secondary">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-download"></i> Download Template
                                 </button>
-                            </form>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <form method="POST" class="d-inline">
+                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                            <button type="submit" name="download_template" class="dropdown-item">
+                                                <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="POST" class="d-inline">
+                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                            <input type="hidden" name="format" value="pdf">
+                                            <button type="submit" name="download_template_pdf" class="dropdown-item">
+                                                <i class="fas fa-file-pdf text-danger"></i> PDF
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="POST" class="d-inline">
+                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                            <input type="hidden" name="format" value="docx">
+                                            <button type="submit" name="download_template_docx" class="dropdown-item">
+                                                <i class="fas fa-file-word text-primary"></i> Word (.docx)
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                         <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllQuizModal">
                             <i class="fas fa-trash-alt"></i> Delete All
@@ -1366,25 +1472,31 @@ $subject_names = [
     </div>
 </div>
 
-            <!-- Import CSV Modal -->
+            <!-- Import Modal -->
             <div class="modal fade" id="importCsvModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <form method="POST" enctype="multipart/form-data">
                             <div class="modal-header bg-success text-white">
-                                <h5 class="modal-title"><i class="fas fa-file-csv"></i> Import Questions from CSV</h5>
+                                <h5 class="modal-title"><i class="fas fa-file-import"></i> Import Questions</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="alert alert-info">
                                     <strong>How to use:</strong>
                                     <ol class="mb-0 mt-1">
-                                        <li>Click <strong>Download Template</strong> to get the Excel file (.xlsx)</li>
-                                        <li>Fill in your questions — use the dropdowns for Category, Level, and Correct Answer</li>
-                                        <li>In Excel: <strong>File → Save As → CSV UTF-8 (Comma delimited) (.csv)</strong></li>
-                                        <li>Upload the saved CSV file here</li>
+                                        <li>Click <strong>Download Template</strong> and choose your preferred format</li>
+                                        <li>Fill in your questions in the template</li>
+                                        <li>Upload the completed file here</li>
                                     </ol>
-                                    <div class="mt-2 text-warning"><i class="fas fa-exclamation-triangle"></i> <strong>Do NOT upload the .xlsx file directly — save as CSV first.</strong></div>
+                                    <div class="mt-2 text-success">
+                                        <i class="fas fa-check-circle"></i> 
+                                        <strong>Supported formats:</strong> Excel (.xlsx), Word (.docx), PDF (.pdf), or CSV (.csv)
+                                    </div>
+                                    <div class="mt-2 text-warning">
+                                        <i class="fas fa-info-circle"></i> 
+                                        <strong>Note:</strong> Excel and Word formats are recommended for best results. PDF import may have limitations.
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Subject <span class="text-danger">*</span></label>
@@ -1397,9 +1509,14 @@ $subject_names = [
                                     </select>
                                 </div>
                             <div class="mb-3">
-                                <label class="form-label">CSV File <span class="text-danger">*</span></label>
-                                <input type="file" name="csv_file" class="form-control" accept=".csv,.xlsx,.xls" required>
-                                <small class="text-muted">Upload the CSV file saved from the Excel template. In Excel: File → Save As → CSV UTF-8 (Comma delimited)</small>
+                                <label class="form-label">Upload File <span class="text-danger">*</span></label>
+                                <input type="file" name="csv_file" class="form-control" accept=".csv,.xlsx,.xls,.docx,.pdf" required>
+                                <small class="text-muted">
+                                    <i class="fas fa-file-excel text-success"></i> Excel (.xlsx) | 
+                                    <i class="fas fa-file-word text-primary"></i> Word (.docx) | 
+                                    <i class="fas fa-file-pdf text-danger"></i> PDF (.pdf) | 
+                                    <i class="fas fa-file-csv text-info"></i> CSV (.csv)
+                                </small>
                             </div>
                                 <div class="mb-2">
                                     <small class="text-muted">

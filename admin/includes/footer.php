@@ -1,11 +1,4 @@
-<!-- /.content-wrapper -->
-<footer class="main-footer" style="background-color:#2c3e50 !important;">
-    <strong>Copyright &copy; 2025 PLAY2REVIEW GAME.</strong>
 
-    <div class="float-right d-none d-sm-inline-block">
-        All rights reserved.
-    </div>
-</footer>
 
 <!-- jQuery -->
 <script src="assets/plugins/jquery/jquery.min.js"></script>
