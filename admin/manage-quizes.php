@@ -1451,6 +1451,20 @@ $subject_names = [
     </div>
 </div>
 
+            <!-- Hidden forms for template downloads (outside import form to avoid nesting) -->
+            <form method="POST" id="downloadXlsxForm" style="display:none">
+                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="download_template" value="1">
+            </form>
+            <form method="POST" id="downloadPdfForm" style="display:none">
+                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="download_template_pdf" value="1">
+            </form>
+            <form method="POST" id="downloadDocxForm" style="display:none">
+                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="download_template_docx" value="1">
+            </form>
+
             <!-- Import Modal -->
             <div class="modal fade" id="importCsvModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -1470,28 +1484,19 @@ $subject_names = [
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li>
-                                                <form method="POST" class="d-inline">
-                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                                    <button type="submit" name="download_template" class="dropdown-item">
-                                                        <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadXlsxForm').submit()">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
+                                                </button>
                                             </li>
                                             <li>
-                                                <form method="POST" class="d-inline">
-                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                                    <button type="submit" name="download_template_pdf" class="dropdown-item">
-                                                        <i class="fas fa-file-pdf text-danger"></i> PDF
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadPdfForm').submit()">
+                                                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                </button>
                                             </li>
                                             <li>
-                                                <form method="POST" class="d-inline">
-                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                                    <button type="submit" name="download_template_docx" class="dropdown-item">
-                                                        <i class="fas fa-file-word text-primary"></i> Word (.docx)
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadDocxForm').submit()">
+                                                    <i class="fas fa-file-word text-primary"></i> Word (.docx)
+                                                </button>
                                             </li>
                                         </ul>
                                     </div>
