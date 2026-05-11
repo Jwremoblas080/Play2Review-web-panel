@@ -1453,15 +1453,15 @@ $subject_names = [
 
             <!-- Hidden forms for template downloads (outside import form to avoid nesting) -->
             <form method="POST" id="downloadXlsxForm" style="display:none">
-                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="subject_name" id="dlXlsxSubject" value="<?php echo $current_subject; ?>">
                 <input type="hidden" name="download_template" value="1">
             </form>
             <form method="POST" id="downloadPdfForm" style="display:none">
-                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="subject_name" id="dlPdfSubject" value="<?php echo $current_subject; ?>">
                 <input type="hidden" name="download_template_pdf" value="1">
             </form>
             <form method="POST" id="downloadDocxForm" style="display:none">
-                <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                <input type="hidden" name="subject_name" id="dlDocxSubject" value="<?php echo $current_subject; ?>">
                 <input type="hidden" name="download_template_docx" value="1">
             </form>
 
@@ -1484,17 +1484,17 @@ $subject_names = [
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li>
-                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadXlsxForm').submit()">
+                                                <button type="button" class="dropdown-item" onclick="downloadTemplate('xlsx')">
                                                     <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
                                                 </button>
                                             </li>
                                             <li>
-                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadPdfForm').submit()">
+                                                <button type="button" class="dropdown-item" onclick="downloadTemplate('pdf')">
                                                     <i class="fas fa-file-pdf text-danger"></i> PDF
                                                 </button>
                                             </li>
                                             <li>
-                                                <button type="button" class="dropdown-item" onclick="document.getElementById('downloadDocxForm').submit()">
+                                                <button type="button" class="dropdown-item" onclick="downloadTemplate('docx')">
                                                     <i class="fas fa-file-word text-primary"></i> Word (.docx)
                                                 </button>
                                             </li>
@@ -1693,6 +1693,17 @@ $subject_names = [
         </script>
     </div>
 <script>
+// Sync subject from import modal dropdown to hidden download forms, then submit
+function downloadTemplate(format) {
+    const subject = document.querySelector('#importCsvModal select[name="import_subject"]').value;
+    document.getElementById('dlXlsxSubject').value  = subject;
+    document.getElementById('dlPdfSubject').value   = subject;
+    document.getElementById('dlDocxSubject').value  = subject;
+    if (format === 'xlsx') document.getElementById('downloadXlsxForm').submit();
+    if (format === 'pdf')  document.getElementById('downloadPdfForm').submit();
+    if (format === 'docx') document.getElementById('downloadDocxForm').submit();
+}
+
 $(document).ready(function() {
     $('#quizesTable').DataTable({
         "responsive": true,
