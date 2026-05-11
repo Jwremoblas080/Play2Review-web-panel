@@ -197,15 +197,20 @@ foreach($subjects as $subject) {
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-body">
-                                <form method="GET" class="form-inline">
-                                    <label class="mr-2">Date Range:</label>
-                                    <input type="date" name="start_date" class="form-control mr-2" value="<?php echo $start_date; ?>">
-                                    <label class="mr-2">to</label>
-                                    <input type="date" name="end_date" class="form-control mr-2" value="<?php echo $end_date; ?>">
-                                    <button type="submit" class="btn btn-primary mr-2">
-                                        <i class="fas fa-filter"></i> Filter
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                    <form method="GET" class="form-inline">
+                                        <label class="mr-2">Date Range:</label>
+                                        <input type="date" name="start_date" class="form-control mr-2" value="<?php echo $start_date; ?>">
+                                        <label class="mr-2">to</label>
+                                        <input type="date" name="end_date" class="form-control mr-2" value="<?php echo $end_date; ?>">
+                                        <button type="submit" class="btn btn-primary mr-2">
+                                            <i class="fas fa-filter"></i> Filter
+                                        </button>
+                                    </form>
+                                    <button onclick="printAnalytics()" class="btn btn-secondary">
+                                        <i class="fas fa-print"></i> Print Report
                                     </button>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -787,6 +792,213 @@ $(document).ready(function() {
         $('html, body').animate({ scrollTop: 0 }, 300);
     });
 });
+
+function printAnalytics() {
+    const win = window.open('', '_blank', 'width=1000,height=750');
+    const dateRange = '<?php echo date("M d, Y", strtotime($start_date)); ?>';
+    const dateEnd   = '<?php echo date("M d, Y", strtotime($end_date)); ?>';
+    const now       = '<?php echo date("F d, Y  h:i A"); ?>';
+    const adminName = '<?php echo htmlspecialchars($_SESSION["name"] ?? "Admin"); ?>';
+    const stats = <?php echo json_encode($stats); ?>;
+    const topPerformers = <?php echo json_encode($top_performers); ?>;
+    const characterStats = <?php echo json_encode($character_stats); ?>;
+    const teacherStatusStats = <?php echo json_encode($teacher_status_stats); ?>;
+    const teacherSubjectStats = <?php echo json_encode($teacher_subject_stats); ?>;
+    const quizStats = <?php echo json_encode($quiz_stats); ?>;
+    const recentStudents = <?php echo json_encode($recent_students); ?>;
+    const recentTeachers = <?php echo json_encode($recent_teachers); ?>;
+    const subjectNames = { english:'English', ap:'Araling Panlipunan', filipino:'Filipino', math:'Mathematics', science:'Science' };
+    const subjectColors = { english:'#0A5F38', ap:'#1cc88a', filipino:'#e6a817', math:'#36b9cc', science:'#1E7D4E' };
+    const catCounts = { english:5, ap:5, filipino:5, math:6, science:5 };
+
+    function pct(val, max) { return max > 0 ? Math.min(100, Math.round((val/max)*100)) : 0; }
+    function fmt(n) { return Number(n).toLocaleString(); }
+    function bar(pctVal, color) {
+        return `<div class="bar-wrap"><div class="bar" style="width:${pctVal}%;background:${color};"></div><span class="bar-label">${pctVal}%</span></div>`;
+    }
+    function secHeader(title, icon) {
+        return `<div class="sec-header"><span>${icon}</span><span>${title}</span></div>`;
+    }
+    function kpi(value, label, color, icon) {
+        return `<div class="kpi" style="border-top:4px solid ${color}"><div class="kpi-icon" style="color:${color}">${icon}</div><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div></div>`;
+    }
+
+    // 1. Overview KPIs
+    let overviewKpis = `<div class="kpi-grid">
+        ${kpi(fmt(stats.total_users),    'Total Students',        '#0A5F38','&#128100;')}
+        ${kpi(fmt(stats.active_users),   'Active (30 days)',      '#1E88E5','&#9989;')}
+        ${kpi(fmt(stats.new_users),      'New (Period)',          '#43A047','&#10133;')}
+        ${kpi(fmt(stats.total_educators),'Total Educators',       '#FB8C00','&#127979;')}
+    </div>`;
+
+    // 2. Subject progress
+    let subRows = '';
+    for (const [sub, name] of Object.entries(subjectNames)) {
+        const p = stats[`avg_${sub}_percentage`] || 0;
+        const avg = stats[`avg_${sub}_level`] || 0;
+        const comp = stats[`${sub}_completed`] || 0;
+        const max = catCounts[sub] * 10;
+        subRows += `<tr><td><strong>${name}</strong></td><td>${avg} / ${max}</td><td>${bar(p, subjectColors[sub])}</td><td>${comp}</td></tr>`;
+    }
+    let subjectSection = `${secHeader('Subject Completion Progress','&#128218;')}
+        <table><thead><tr><th>Subject</th><th>Avg Level</th><th style="width:40%">Progress</th><th>Completed</th></tr></thead><tbody>${subRows}</tbody></table>`;
+
+    // 3. Top performers
+    let perfRows = '';
+    topPerformers.forEach((p,i) => {
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+        perfRows += `<tr><td style="text-align:center">${medal}</td><td>${p.player_name}</td><td><strong>${fmt(p.total_score)}</strong></td><td>${fmt(p.feathers)}</td><td>${fmt(p.potion)}</td><td>${p.lives}</td></tr>`;
+    });
+    let perfSection = `${secHeader('Top 10 Performers','&#127942;')}
+        <table><thead><tr><th>#</th><th>Player</th><th>Score</th><th>Feathers</th><th>Potions</th><th>Lives</th></tr></thead><tbody>${perfRows}</tbody></table>`;
+
+    // 4. Students
+    const totalUsers = stats.total_users || 1;
+    let charRows = '';
+    for (const [ch, cnt] of Object.entries(characterStats)) {
+        const p = pct(cnt, totalUsers);
+        charRows += `<tr><td>${ch||'None'}</td><td>${cnt}</td><td>${p}%</td><td>${bar(p,'#17a2b8')}</td></tr>`;
+    }
+    let studRows = '';
+    recentStudents.forEach(s => {
+        studRows += `<tr><td>${s.player_name}</td><td>${new Date(s.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td></tr>`;
+    });
+    let studentsSection = `${secHeader('Student Statistics','&#127891;')}
+        <div class="two-col">
+            <div><h4>Summary</h4>
+                <table>
+                    <tr><td>Total Students</td><td><strong>${fmt(stats.total_users)}</strong></td></tr>
+                    <tr><td>Active (30 days)</td><td><strong>${fmt(stats.active_users)}</strong></td></tr>
+                    <tr><td>New (Period)</td><td><strong>${fmt(stats.new_users)}</strong></td></tr>
+                    <tr><td>Activity Rate</td><td><strong>${pct(stats.active_users,stats.total_users)}%</strong></td></tr>
+                </table>
+            </div>
+            <div><h4>Character Distribution</h4>
+                <table><thead><tr><th>Character</th><th>Count</th><th>%</th><th>Visual</th></tr></thead><tbody>${charRows}</tbody></table>
+            </div>
+        </div>
+        <h4>Recent Registrations</h4>
+        <table><thead><tr><th>Player Name</th><th>Registration Date</th></tr></thead><tbody>${studRows}</tbody></table>`;
+
+    // 5. Educators
+    const totalTeachers = Object.values(teacherStatusStats).reduce((a,b)=>a+b,0)||1;
+    let statusRows = '';
+    for (const [st, cnt] of Object.entries(teacherStatusStats)) {
+        const p = pct(cnt, totalTeachers);
+        const dot = st==='active'?'#28a745':'#6c757d';
+        statusRows += `<tr><td><span style="color:${dot}">&#9679;</span> ${st.charAt(0).toUpperCase()+st.slice(1)}</td><td>${cnt}</td><td>${p}%</td></tr>`;
+    }
+    const totalBySub = Object.values(teacherSubjectStats).reduce((a,b)=>a+b,0)||1;
+    let subTeachRows = '';
+    for (const [sub, cnt] of Object.entries(teacherSubjectStats)) {
+        subTeachRows += `<tr><td>${sub.charAt(0).toUpperCase()+sub.slice(1)}</td><td>${cnt}</td><td>${bar(pct(cnt,totalBySub),'#007bff')}</td></tr>`;
+    }
+    let teachRows = '';
+    recentTeachers.forEach(t => {
+        teachRows += `<tr><td>${t.teacher_name}</td><td>${t.email}</td><td>${new Date(t.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</td></tr>`;
+    });
+    let educatorsSection = `${secHeader('Educator Statistics','&#128203;')}
+        <div class="two-col">
+            <div><h4>Status Distribution</h4>
+                <table><thead><tr><th>Status</th><th>Count</th><th>%</th></tr></thead><tbody>${statusRows}</tbody></table>
+            </div>
+            <div><h4>By Subject</h4>
+                <table><thead><tr><th>Subject</th><th>Count</th><th>Visual</th></tr></thead><tbody>${subTeachRows}</tbody></table>
+            </div>
+        </div>
+        <h4>Recent Educator Registrations</h4>
+        <table><thead><tr><th>Name</th><th>Email</th><th>Date</th></tr></thead><tbody>${teachRows}</tbody></table>`;
+
+    // 6. Game Stats
+    let gameSection = `${secHeader('Game Statistics','&#127918;')}
+        <div class="kpi-grid">
+            ${kpi(fmt(stats.total_feathers),'Total Feathers','#e6a817','&#129413;')}
+            ${kpi(fmt(stats.total_potion),  'Total Potions', '#9C27B0','&#9879;')}
+            ${kpi(stats.avg_lives,          'Avg Lives',     '#E91E63','&#10084;')}
+        </div>
+        <table><thead><tr><th>Resource</th><th>Total</th><th>Avg per Student</th></tr></thead>
+        <tbody>
+            <tr><td>&#129413; Feathers</td><td>${fmt(stats.total_feathers)}</td><td>${stats.total_users>0?(stats.total_feathers/stats.total_users).toFixed(2):0}</td></tr>
+            <tr><td>&#9879; Potions</td><td>${fmt(stats.total_potion)}</td><td>${stats.total_users>0?(stats.total_potion/stats.total_users).toFixed(2):0}</td></tr>
+            <tr><td>&#10084; Lives</td><td>—</td><td>${stats.avg_lives}</td></tr>
+        </tbody></table>`;
+
+    // 7. Quizzes
+    const totalQ = Object.values(quizStats).reduce((a,b)=>a+Number(b),0)||1;
+    let quizRows = '';
+    for (const [sub, cnt] of Object.entries(quizStats)) {
+        const p = pct(cnt, totalQ);
+        quizRows += `<tr><td><strong>${subjectNames[sub]||sub}</strong></td><td>${cnt}</td><td>${p}%</td><td>${bar(p,subjectColors[sub]||'#0A5F38')}</td></tr>`;
+    }
+    let quizSection = `${secHeader('Quiz Distribution','&#10067;')}
+        <table><thead><tr><th>Subject</th><th>Total Quizzes</th><th>%</th><th style="width:35%">Visual</th></tr></thead>
+        <tbody>${quizRows}<tr style="font-weight:bold;background:#f0f0f0"><td>TOTAL</td><td>${totalQ}</td><td>100%</td><td></td></tr></tbody></table>`;
+
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Play2Review Analytics Report</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;background:#fff}
+  .cover{background:linear-gradient(135deg,#0A5F38 0%,#1E7D4E 100%);color:white;padding:32px 40px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cover-logo{font-size:1.9rem;font-weight:900;letter-spacing:1px;margin-bottom:4px}
+  .cover-logo span{color:#a8f0c6}
+  .cover-title{font-size:1.1rem;font-weight:600;opacity:.95;margin-bottom:14px}
+  .cover-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:.75rem;opacity:.85;border-top:1px solid rgba(255,255,255,.3);padding-top:10px}
+  .cover-meta span strong{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-bottom:1px}
+  .page-body{padding:24px 40px}
+  .sec-header{display:flex;align-items:center;gap:10px;background:#0A5F38;color:white;padding:7px 14px;border-radius:6px;margin:22px 0 10px;font-size:.9rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;page-break-after:avoid}
+  .sec-header:first-child{margin-top:0}
+  .kpi-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .kpi{flex:1;min-width:120px;border:1px solid #e0e0e0;border-radius:8px;padding:12px 10px;text-align:center;page-break-inside:avoid}
+  .kpi-icon{font-size:1.3rem;margin-bottom:5px}
+  .kpi-val{font-size:1.5rem;font-weight:800;color:#0A5F38;line-height:1;margin-bottom:3px}
+  .kpi-lbl{font-size:.68rem;color:#666;text-transform:uppercase;letter-spacing:.3px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:.8rem;page-break-inside:auto}
+  thead tr{background:#0A5F38;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  th{padding:6px 9px;text-align:left;font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.3px}
+  td{padding:5px 9px;border-bottom:1px solid #eee;vertical-align:middle}
+  tr:nth-child(even) td{background:#f8f9fa}
+  tr:last-child td{border-bottom:none}
+  .bar-wrap{position:relative;background:#e9ecef;border-radius:20px;height:13px;overflow:hidden}
+  .bar{height:100%;border-radius:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .bar-label{position:absolute;right:5px;top:0;line-height:13px;font-size:.65rem;font-weight:bold;color:#333}
+  .two-col{display:flex;gap:18px;margin-bottom:12px}
+  .two-col>div{flex:1;min-width:0}
+  h4{font-size:.8rem;font-weight:700;color:#0A5F38;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.3px}
+  .rpt-footer{margin-top:24px;padding:10px 40px;background:#f8f9fa;border-top:2px solid #0A5F38;font-size:.68rem;color:#666;display:flex;justify-content:space-between;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{margin:10mm 8mm;size:A4}
+  @media print{.sec-header{page-break-after:avoid}tr{page-break-inside:avoid}.kpi{page-break-inside:avoid}}
+</style></head>
+<body>
+  <div class="cover">
+    <div class="cover-logo">Play2<span>Review</span></div>
+    <div class="cover-title">Comprehensive Analytics Report</div>
+    <div class="cover-meta">
+      <span><strong>Date Range</strong>${dateRange} &mdash; ${dateEnd}</span>
+      <span><strong>Generated</strong>${now}</span>
+      <span><strong>Prepared by</strong>${adminName}</span>
+      <span><strong>Total Students</strong>${fmt(stats.total_users)}</span>
+      <span><strong>Total Educators</strong>${fmt(stats.total_educators)}</span>
+    </div>
+  </div>
+  <div class="page-body">
+    ${overviewKpis}
+    ${subjectSection}
+    ${perfSection}
+    ${studentsSection}
+    ${educatorsSection}
+    ${gameSection}
+    ${quizSection}
+  </div>
+  <div class="rpt-footer">
+    <span>Play2Review &mdash; Admin Analytics Report</span>
+    <span>Generated: ${now}</span>
+  </div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 800);
+}
 </script>
 
 </body>

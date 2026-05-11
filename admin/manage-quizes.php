@@ -888,6 +888,24 @@ $subject_names = [
             font-size: 0.7rem;
             font-weight: bold;
         }
+
+        /* Table column sizing */
+        #quizesTable th:nth-child(1), #quizesTable td:nth-child(1) { width: 55px; }
+        #quizesTable th:nth-child(3), #quizesTable td:nth-child(3) { width: 80px; white-space: nowrap; }
+        #quizesTable th:nth-child(4), #quizesTable td:nth-child(4) { width: 120px; }
+        #quizesTable th:nth-child(6), #quizesTable td:nth-child(6) { width: 75px; white-space: nowrap; }
+        #quizesTable th:nth-child(7), #quizesTable td:nth-child(7) { width: 90px; }
+        #quizesTable th:nth-child(8), #quizesTable td:nth-child(8) { width: 80px; white-space: nowrap; }
+
+        @media (max-width: 768px) {
+            .content-header h1 { font-size: 1.2rem; }
+            .subject-tab { font-size: 0.78rem; padding: 5px 8px; }
+            .level-tab { font-size: 0.72rem; padding: 3px 7px; }
+            .filter-section { padding: 10px; }
+        }
+        @media (max-width: 576px) {
+            .content-header .breadcrumb { display: none; }
+        }
     </style>
 </head>
 
@@ -925,51 +943,18 @@ $subject_names = [
             <section class="content">
                 <div class="container-fluid">
                     <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div class="d-flex gap-2 flex-wrap">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                        <div class="d-flex flex-wrap gap-2">
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addQuizModal">
-                                <i class="fas fa-plus"></i> Add New Question
+                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Add New Question</span><span class="d-sm-none">Add</span>
                             </button>
                             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                                <i class="fas fa-file-import"></i> Import Questions
+                                <i class="fas fa-file-import"></i> <span class="d-none d-sm-inline">Import Questions</span><span class="d-sm-none">Import</span>
                             </button>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-download"></i> Download Template
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <form method="POST" class="d-inline">
-                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                            <button type="submit" name="download_template" class="dropdown-item">
-                                                <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
-                                            </button>
-                                        </form>
-                                    </li>
-                                    <li>
-                                        <form method="POST" class="d-inline">
-                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                            <input type="hidden" name="format" value="pdf">
-                                            <button type="submit" name="download_template_pdf" class="dropdown-item">
-                                                <i class="fas fa-file-pdf text-danger"></i> PDF
-                                            </button>
-                                        </form>
-                                    </li>
-                                    <li>
-                                        <form method="POST" class="d-inline">
-                                            <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
-                                            <input type="hidden" name="format" value="docx">
-                                            <button type="submit" name="download_template_docx" class="dropdown-item">
-                                                <i class="fas fa-file-word text-primary"></i> Word (.docx)
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </div>
+                            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllQuizModal">
+                                <i class="fas fa-trash-alt"></i> <span class="d-none d-sm-inline">Delete All</span><span class="d-sm-none">Delete</span>
+                            </button>
                         </div>
-                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllQuizModal">
-                            <i class="fas fa-trash-alt"></i> Delete All
-                        </button>
                     </div>
 
                     <!-- Success/Error Messages -->
@@ -991,46 +976,41 @@ $subject_names = [
 
                     <!-- Subject and Level Filter Section -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0" style="color:white;">
+                        <div class="card-header">
+                            <h5 class="mb-0">
                                 <i class="fas fa-filter"></i> Filter Questions
-                                <span class="admin-badge">Full Access</span>
+                                <span class="admin-badge ms-2">Full Access</span>
                             </h5>
                         </div>
                         <div class="card-body">
-                            <!-- Subject Filter -->
-                            <div class="filter-section">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h6 class="mb-2"><i class="fas fa-book"></i> Filter by Subject:</h6>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <?php foreach ($all_subjects as $subject): ?>
-                                                <a href="?subject=<?php echo urlencode($subject); ?>&level=<?php echo $current_level; ?>"
-                                                    class="btn subject-tab <?php echo ($subject === $current_subject) ? 'active' : 'btn-outline-primary'; ?>">
-                                                    <i class="fas fa-book"></i>
-                                                    <?php echo $subject_names[$subject]; ?>
-                                                </a>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6 class="mb-2"><i class="fas fa-filter"></i> Filter by Level:</h6>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <a href="?subject=<?php echo $current_subject; ?>&level=all"
-                                                class="btn level-tab <?php echo ($current_level === 'all') ? 'active' : 'btn-outline-secondary'; ?>">
-                                                All Levels
-                                            </a>
-                                            <?php for ($i = 1; $i <= 10; $i++): ?>
-                                                <a href="?subject=<?php echo $current_subject; ?>&level=<?php echo $i; ?>"
-                                                    class="btn level-tab <?php echo ($current_level == $i) ? 'active' : 'btn-outline-info'; ?>">
-                                                    Level <?php echo $i; ?>
-                                                    <?php if (in_array($i, $available_levels)): ?>
-                                                        <span class="badge bg-light text-dark ms-1">✓</span>
-                                                    <?php endif; ?>
-                                                </a>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
+                            <div class="filter-section mb-3">
+                                <h6 class="mb-2"><i class="fas fa-book"></i> Filter by Subject:</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <?php foreach ($all_subjects as $subject): ?>
+                                        <a href="?subject=<?php echo urlencode($subject); ?>&level=<?php echo $current_level; ?>"
+                                            class="btn subject-tab <?php echo ($subject === $current_subject) ? 'active' : 'btn-outline-primary'; ?>">
+                                            <i class="fas fa-book"></i>
+                                            <?php echo $subject_names[$subject]; ?>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <div class="filter-section mb-0">
+                                <h6 class="mb-2"><i class="fas fa-layer-group"></i> Filter by Level:</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <a href="?subject=<?php echo $current_subject; ?>&level=all"
+                                        class="btn level-tab <?php echo ($current_level === 'all') ? 'active' : 'btn-outline-secondary'; ?>">
+                                        All Levels
+                                    </a>
+                                    <?php for ($i = 1; $i <= 10; $i++): ?>
+                                        <a href="?subject=<?php echo $current_subject; ?>&level=<?php echo $i; ?>"
+                                            class="btn level-tab <?php echo ($current_level == $i) ? 'active' : 'btn-outline-info'; ?>">
+                                            Level <?php echo $i; ?>
+                                            <?php if (in_array($i, $available_levels)): ?>
+                                                <span class="badge bg-light text-dark ms-1">✓</span>
+                                            <?php endif; ?>
+                                        </a>
+                                    <?php endfor; ?>
                                 </div>
                             </div>
                         </div>
@@ -1039,14 +1019,13 @@ $subject_names = [
                     <!-- Quiz Questions Table -->
                     <?php if ($current_subject): ?>
                         <div class="card">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0" style="color:white;">
+                            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <h5 class="mb-0">
                                     <i class="fas fa-list"></i>
                                     <?php echo $subject_names[$current_subject]; ?> Questions
-                                    <span class="badge bg-secondary"><?php echo count($quizzes); ?> questions</span>
+                                    <span class="badge bg-light text-dark ms-1"><?php echo count($quizzes); ?> questions</span>
                                 </h5>
-                                <div>
-                                    <span class="text-muted" style="color:white !important;">Levels: </span>
+                                <div class="d-flex flex-wrap gap-1">
                                     <?php
                                     $levels = array_unique(array_column($quizzes, 'quiz_level'));
                                     sort($levels);
@@ -1474,7 +1453,7 @@ $subject_names = [
 
             <!-- Import Modal -->
             <div class="modal fade" id="importCsvModal" tabindex="-1">
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <form method="POST" enctype="multipart/form-data">
                             <div class="modal-header bg-success text-white">
@@ -1482,22 +1461,42 @@ $subject_names = [
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
-                                <div class="alert alert-info">
-                                    <strong>How to use:</strong>
-                                    <ol class="mb-0 mt-1">
-                                        <li>Click <strong>Download Template</strong> and choose your preferred format</li>
-                                        <li>Fill in your questions in the template</li>
-                                        <li>Upload the completed file here</li>
-                                    </ol>
-                                    <div class="mt-2 text-success">
-                                        <i class="fas fa-check-circle"></i> 
-                                        <strong>Supported formats:</strong> Excel (.xlsx), Word (.docx), PDF (.pdf), or CSV (.csv)
-                                    </div>
-                                    <div class="mt-2 text-warning">
-                                        <i class="fas fa-info-circle"></i> 
-                                        <strong>Note:</strong> Excel and Word formats are recommended for best results. PDF import may have limitations.
+                                <!-- Download Template -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="fas fa-download"></i> Download Template</label>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-download"></i> Template
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                                    <button type="submit" name="download_template" class="dropdown-item">
+                                                        <i class="fas fa-file-excel text-success"></i> Excel (.xlsx)
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                                    <button type="submit" name="download_template_pdf" class="dropdown-item">
+                                                        <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="subject_name" value="<?php echo $current_subject; ?>">
+                                                    <button type="submit" name="download_template_docx" class="dropdown-item">
+                                                        <i class="fas fa-file-word text-primary"></i> Word (.docx)
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </div>
+                                <hr>
                                 <div class="mb-3">
                                     <label class="form-label">Subject <span class="text-danger">*</span></label>
                                     <select name="import_subject" class="form-control" required>
@@ -1508,22 +1507,20 @@ $subject_names = [
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                            <div class="mb-3">
-                                <label class="form-label">Upload File <span class="text-danger">*</span></label>
-                                <input type="file" name="csv_file" class="form-control" accept=".csv,.xlsx,.xls,.docx,.pdf" required>
-                                <small class="text-muted">
-                                    <i class="fas fa-file-excel text-success"></i> Excel (.xlsx) | 
-                                    <i class="fas fa-file-word text-primary"></i> Word (.docx) | 
-                                    <i class="fas fa-file-pdf text-danger"></i> PDF (.pdf) | 
-                                    <i class="fas fa-file-csv text-info"></i> CSV (.csv)
-                                </small>
-                            </div>
-                                <div class="mb-2">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload File <span class="text-danger">*</span></label>
+                                    <input type="file" name="csv_file" class="form-control" accept=".csv,.xlsx,.xls,.docx,.pdf" required>
                                     <small class="text-muted">
-                                        <i class="fas fa-info-circle"></i>
-                                        Rows with missing questions, invalid levels (1–10), or invalid correct answer (1–4) will be skipped.
+                                        <i class="fas fa-file-excel text-success"></i> Excel (.xlsx) &nbsp;|&nbsp;
+                                        <i class="fas fa-file-word text-primary"></i> Word (.docx) &nbsp;|&nbsp;
+                                        <i class="fas fa-file-pdf text-danger"></i> PDF (.pdf) &nbsp;|&nbsp;
+                                        <i class="fas fa-file-csv text-info"></i> CSV (.csv)
                                     </small>
                                 </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Rows with missing questions, invalid levels (1–10), or invalid correct answer (1–4) will be skipped.
+                                </small>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
