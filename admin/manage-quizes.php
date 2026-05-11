@@ -1477,7 +1477,7 @@ $subject_names = [
                             <div class="modal-body">
                                 <!-- Download Template -->
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold"><i class="fas fa-download"></i> Download Template</label>
+                                    <label class="form-label fw-bold"><i class="fas fa-download"></i>Templates:</label>
                                     <div class="btn-group">
                                         <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="fas fa-download"></i> Template
