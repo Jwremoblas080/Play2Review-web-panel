@@ -65,11 +65,45 @@ if(isset($_POST['action'])) {
             
         case 'delete_teacher':
             $id = mysqli_real_escape_string($con, $_POST['id']);
+            $admin_id = $_SESSION['id'] ?? 0;
+            
+            // Soft delete - move to archive
+            $query = "UPDATE educators SET 
+                     is_archived = 1, 
+                     archived_at = NOW(),
+                     archived_by = '$admin_id'
+                     WHERE id = '$id'";
+            
+            if(mysqli_query($con, $query)) {
+                $_SESSION['success'] = "Teacher archived successfully! You can restore it from the archive.";
+            } else {
+                $_SESSION['error'] = "Error archiving teacher: " . mysqli_error($con);
+            }
+            break;
+            
+        case 'restore_teacher':
+            $id = mysqli_real_escape_string($con, $_POST['id']);
+            
+            $query = "UPDATE educators SET 
+                     is_archived = 0, 
+                     archived_at = NULL,
+                     archived_by = NULL
+                     WHERE id = '$id'";
+            
+            if(mysqli_query($con, $query)) {
+                $_SESSION['success'] = "Teacher restored successfully!";
+            } else {
+                $_SESSION['error'] = "Error restoring teacher: " . mysqli_error($con);
+            }
+            break;
+            
+        case 'permanent_delete':
+            $id = mysqli_real_escape_string($con, $_POST['id']);
             
             $query = "DELETE FROM educators WHERE id = '$id'";
             
             if(mysqli_query($con, $query)) {
-                $_SESSION['success'] = "Teacher deleted successfully!";
+                $_SESSION['success'] = "Teacher permanently deleted!";
             } else {
                 $_SESSION['error'] = "Error deleting teacher: " . mysqli_error($con);
             }
@@ -80,18 +114,39 @@ if(isset($_POST['action'])) {
     exit();
 }
 
-// Fetch all teachers
-$query = "SELECT * FROM educators ORDER BY created_at DESC";
+// Get view mode (active or archived)
+$view_mode = isset($_GET['view']) ? $_GET['view'] : 'active';
+
+// Fetch teachers based on view mode
+if($view_mode == 'archived') {
+    $query = "SELECT * FROM educators WHERE is_archived = 1 ORDER BY archived_at DESC";
+} else {
+    $query = "SELECT * FROM educators WHERE is_archived = 0 ORDER BY created_at DESC";
+}
+
 $result = mysqli_query($con, $query);
 $teachers = array();
 while($row = mysqli_fetch_assoc($result)) {
     $teachers[] = $row;
 }
 
-// Get statistics
-$total_teachers = count($teachers);
+// Get statistics (only active, non-archived teachers)
+$stats_query = "SELECT * FROM educators WHERE is_archived = 0";
+$stats_result = mysqli_query($con, $stats_query);
+$active_teachers_list = array();
+while($row = mysqli_fetch_assoc($stats_result)) {
+    $active_teachers_list[] = $row;
+}
+
+$total_teachers = count($active_teachers_list);
 $active_teachers = 0;
 $pending_teachers = 0;
+
+// Get archived count
+$archived_query = "SELECT COUNT(*) as archived_count FROM educators WHERE is_archived = 1";
+$archived_result = mysqli_query($con, $archived_query);
+$archived_row = mysqli_fetch_assoc($archived_result);
+$archived_count = $archived_row['archived_count'];
 $subject_counts = [
     'english' => 0,
     'ap' => 0,
@@ -100,7 +155,7 @@ $subject_counts = [
     'science' => 0
 ];
 
-foreach($teachers as $teacher) {
+foreach($active_teachers_list as $teacher) {
     if($teacher['status'] == 'active') $active_teachers++;
     if($teacher['status'] == 'pending') $pending_teachers++;
 
@@ -370,13 +425,13 @@ foreach($teachers as $teacher) {
                     <div class="col-lg-3 col-md-6">
                         <div class="stats-card">
                             <div class="stats-number"><?php echo $total_teachers; ?></div>
-                            <div class="stats-label">Total Teachers</div>
+                            <div class="stats-label">Active Teachers</div>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6">
                         <div class="stats-card">
                             <div class="stats-number"><?php echo $active_teachers; ?></div>
-                            <div class="stats-label">Active Teachers</div>
+                            <div class="stats-label">Currently Active</div>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6">
@@ -386,9 +441,23 @@ foreach($teachers as $teacher) {
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6">
-                        <div class="stats-card">
-                            <div class="stats-number"><?php echo array_sum($subject_counts); ?></div>
-                            <div class="stats-label">Subjects Covered</div>
+                        <div class="stats-card" style="cursor: pointer;" onclick="window.location.href='?view=archived'">
+                            <div class="stats-number" style="color: #dc3545;"><?php echo $archived_count; ?></div>
+                            <div class="stats-label">Archived</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="btn-group" role="group">
+                            <a href="?view=active" class="btn <?php echo $view_mode == 'active' ? 'btn-success' : 'btn-outline-success'; ?>">
+                                <i class="fas fa-users"></i> Active Teachers
+                            </a>
+                            <a href="?view=archived" class="btn <?php echo $view_mode == 'archived' ? 'btn-danger' : 'btn-outline-danger'; ?>">
+                                <i class="fas fa-archive"></i> Archived (<?php echo $archived_count; ?>)
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -396,9 +465,11 @@ foreach($teachers as $teacher) {
                 <!-- Action Buttons and Search -->
                 <div class="row mb-3">
                     <div class="col-md-6">
+                        <?php if($view_mode == 'active'): ?>
                         <button class="btn add-new-btn" data-toggle="modal" data-target="#addTeacherModal">
                             <i class="fas fa-plus-circle"></i> Add New Teacher
                         </button>
+                        <?php endif; ?>
                     </div>
                     <div class="col-md-6">
                         <div class="input-group">
@@ -415,7 +486,13 @@ foreach($teachers as $teacher) {
                 <!-- Teachers Table -->
                 <div class="card">
                     <div class="card-header teacher-card-header">
-                        <h3 class="card-title">Educators List</h3>
+                        <h3 class="card-title">
+                            <?php if($view_mode == 'archived'): ?>
+                                <i class="fas fa-archive"></i> Archived Educators
+                            <?php else: ?>
+                                <i class="fas fa-users"></i> Active Educators List
+                            <?php endif; ?>
+                        </h3>
                     </div>
                     <div class="card-body">
                         <?php if(isset($_SESSION['success'])): ?>
@@ -441,7 +518,11 @@ foreach($teachers as $teacher) {
                                         <th>Subject</th>
                                         <th>Age</th>
                                         <th>Status</th>
+                                        <?php if($view_mode == 'archived'): ?>
+                                        <th>Archived Date</th>
+                                        <?php else: ?>
                                         <th>Registered</th>
+                                        <?php endif; ?>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -450,12 +531,18 @@ foreach($teachers as $teacher) {
                                         <tr>
                                             <td colspan="7">
                                                 <div class="empty-state">
-                                                    <i class="fas fa-chalkboard-teacher"></i>
-                                                    <h4>No Teachers Found</h4>
-                                                    <p>Get started by adding your first teacher.</p>
-                                                    <button class="btn add-new-btn" data-toggle="modal" data-target="#addTeacherModal">
-                                                        Add Teacher
-                                                    </button>
+                                                    <?php if($view_mode == 'archived'): ?>
+                                                        <i class="fas fa-archive"></i>
+                                                        <h4>No Archived Teachers</h4>
+                                                        <p>Archived teachers will appear here.</p>
+                                                    <?php else: ?>
+                                                        <i class="fas fa-chalkboard-teacher"></i>
+                                                        <h4>No Teachers Found</h4>
+                                                        <p>Get started by adding your first teacher.</p>
+                                                        <button class="btn add-new-btn" data-toggle="modal" data-target="#addTeacherModal">
+                                                            Add Teacher
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -494,23 +581,49 @@ foreach($teachers as $teacher) {
                                                     <?php echo ucfirst($teacher['status']); ?>
                                                 </span>
                                             </td>
-                                            <td><?php echo date('M j, Y', strtotime($teacher['created_at'])); ?></td>
+                                            <td>
+                                                <?php if($view_mode == 'archived'): ?>
+                                                    <?php echo date('M j, Y', strtotime($teacher['archived_at'])); ?>
+                                                <?php else: ?>
+                                                    <?php echo date('M j, Y', strtotime($teacher['created_at'])); ?>
+                                                <?php endif; ?>
+                                            </td>
                                             <td class="action-buttons">
-                                                <button class="btn btn-info btn-sm btn-action view-teacher" 
-                                                        data-id="<?php echo $teacher['id']; ?>"
-                                                        data-toggle="modal" data-target="#viewTeacherModal">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-warning btn-sm btn-action edit-teacher" 
-                                                        data-id="<?php echo $teacher['id']; ?>"
-                                                        data-toggle="modal" data-target="#editTeacherModal">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm btn-action delete-teacher" 
-                                                        data-id="<?php echo $teacher['id']; ?>"
-                                                        data-name="<?php echo htmlspecialchars($teacher['teacher_name']); ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                <?php if($view_mode == 'archived'): ?>
+                                                    <!-- Archived Actions -->
+                                                    <button class="btn btn-success btn-sm btn-action restore-teacher" 
+                                                            data-id="<?php echo $teacher['id']; ?>"
+                                                            data-name="<?php echo htmlspecialchars($teacher['teacher_name']); ?>"
+                                                            title="Restore">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm btn-action permanent-delete-teacher" 
+                                                            data-id="<?php echo $teacher['id']; ?>"
+                                                            data-name="<?php echo htmlspecialchars($teacher['teacher_name']); ?>"
+                                                            title="Permanently Delete">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <!-- Active Actions -->
+                                                    <button class="btn btn-info btn-sm btn-action view-teacher" 
+                                                            data-id="<?php echo $teacher['id']; ?>"
+                                                            data-toggle="modal" data-target="#viewTeacherModal"
+                                                            title="View">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-warning btn-sm btn-action edit-teacher" 
+                                                            data-id="<?php echo $teacher['id']; ?>"
+                                                            data-toggle="modal" data-target="#editTeacherModal"
+                                                            title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm btn-action delete-teacher" 
+                                                            data-id="<?php echo $teacher['id']; ?>"
+                                                            data-name="<?php echo htmlspecialchars($teacher['teacher_name']); ?>"
+                                                            title="Archive">
+                                                        <i class="fas fa-archive"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
@@ -711,13 +824,13 @@ foreach($teachers as $teacher) {
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Confirmation Modal (Archive) -->
 <div class="modal fade" id="deleteTeacherModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <form method="POST">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-archive"></i> Archive Teacher</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -725,12 +838,76 @@ foreach($teachers as $teacher) {
                 <div class="modal-body">
                     <input type="hidden" name="action" value="delete_teacher">
                     <input type="hidden" name="id" id="delete_id">
-                    <p>Are you sure you want to delete teacher: <strong id="delete_teacher_name"></strong>?</p>
-                    <p class="text-danger">This action cannot be undone!</p>
+                    <p>Are you sure you want to archive teacher: <strong id="delete_teacher_name"></strong>?</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>Note:</strong> This teacher will be moved to the archive. You can restore them later if needed.
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete Teacher</button>
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-archive"></i> Archive Teacher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Confirmation Modal -->
+<div class="modal fade" id="restoreTeacherModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST">
+                <div class="modal-header bg-success">
+                    <h5 class="modal-title"><i class="fas fa-undo"></i> Restore Teacher</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="restore_teacher">
+                    <input type="hidden" name="id" id="restore_id">
+                    <p>Are you sure you want to restore teacher: <strong id="restore_teacher_name"></strong>?</p>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> This teacher will be restored to the active educators list.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-undo"></i> Restore Teacher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Permanent Delete Confirmation Modal -->
+<div class="modal fade" id="permanentDeleteModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST">
+                <div class="modal-header bg-danger">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Permanent Delete</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="permanent_delete">
+                    <input type="hidden" name="id" id="permanent_delete_id">
+                    <p>Are you sure you want to <strong class="text-danger">PERMANENTLY DELETE</strong> teacher: <strong id="permanent_delete_teacher_name"></strong>?</p>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>WARNING:</strong> This action cannot be undone! All data will be permanently removed from the database.
+                    </div>
+                    <div class="form-group">
+                        <label>Type <strong>DELETE</strong> to confirm:</label>
+                        <input type="text" class="form-control" id="confirm_delete_text" placeholder="Type DELETE">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="permanent_delete_btn" disabled>
+                        <i class="fas fa-trash-alt"></i> Permanently Delete
+                    </button>
                 </div>
             </form>
         </div>
@@ -753,8 +930,6 @@ $(document).ready(function() {
         var id = $(this).data('id');
         var row = $(this).closest('tr');
         
-        // You would typically fetch the full teacher data via AJAX here
-        // For now, we'll use the data from the table row
         $('#edit_id').val(id);
         $('#edit_teacher_name').val(row.find('strong').text().trim());
         $('#edit_age').val(row.find('.age-badge').text().replace(' years', '').trim());
@@ -762,11 +937,9 @@ $(document).ready(function() {
         $('#edit_email').val(row.find('small.text-muted').text().trim());
         $('#edit_address').val(row.find('.contact-info').html().split('<br>')[1].replace('<i class="fas fa-map-marker-alt"></i>', '').replace('...', '').trim());
         
-        // Get subject from badge class
         var subjectClass = row.find('.subject-badge').attr('class').split(' ').find(cls => cls.startsWith('badge-'));
         $('#edit_handled_subject').val(subjectClass.replace('badge-', ''));
         
-        // Get status from badge class
         var statusClass = row.find('.status-badge').attr('class').split(' ').find(cls => cls.startsWith('badge-'));
         $('#edit_status').val(statusClass.replace('badge-', ''));
     });
@@ -785,7 +958,7 @@ $(document).ready(function() {
         });
     });
 
-    // Delete Teacher
+    // Archive Teacher (Soft Delete)
     $('.delete-teacher').click(function() {
         var id = $(this).data('id');
         var name = $(this).data('name');
@@ -793,6 +966,37 @@ $(document).ready(function() {
         $('#delete_id').val(id);
         $('#delete_teacher_name').text(name);
         $('#deleteTeacherModal').modal('show');
+    });
+
+    // Restore Teacher
+    $('.restore-teacher').click(function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        
+        $('#restore_id').val(id);
+        $('#restore_teacher_name').text(name);
+        $('#restoreTeacherModal').modal('show');
+    });
+
+    // Permanent Delete Teacher
+    $('.permanent-delete-teacher').click(function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        
+        $('#permanent_delete_id').val(id);
+        $('#permanent_delete_teacher_name').text(name);
+        $('#confirm_delete_text').val('');
+        $('#permanent_delete_btn').prop('disabled', true);
+        $('#permanentDeleteModal').modal('show');
+    });
+
+    // Confirm DELETE text for permanent deletion
+    $('#confirm_delete_text').on('input', function() {
+        if($(this).val() === 'DELETE') {
+            $('#permanent_delete_btn').prop('disabled', false);
+        } else {
+            $('#permanent_delete_btn').prop('disabled', true);
+        }
     });
 
     // Search functionality
