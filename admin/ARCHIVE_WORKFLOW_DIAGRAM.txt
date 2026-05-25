@@ -1,0 +1,288 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    EDUCATOR ARCHIVE SYSTEM - WORKFLOW DIAGRAM                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MAIN DASHBOARD VIEW                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+    │   Active     │  │  Currently   │  │   Pending    │  │  Archived    │
+    │  Teachers    │  │   Active     │  │  Approval    │  │  (Click Me)  │
+    │     50       │  │     45       │  │      5       │  │      10      │
+    └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+                                                                    │
+                                                                    │ Click
+                                                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  VIEW TOGGLE:  [Active Teachers] [Archived (10)]                    │
+    └─────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ACTIVE TEACHERS VIEW
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Teacher Name    │  Contact      │  Subject  │  Status  │  Actions         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  John Doe        │  0912345678   │  English  │  Active  │  👁️ ✏️ 📦        │
+│  jane@email.com  │  Manila       │           │          │                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                                              │  │  │
+                                                              │  │  └─ Archive
+                                                              │  └──── Edit
+                                                              └─────── View
+
+                                    │
+                                    │ Click Archive (📦)
+                                    ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ARCHIVE CONFIRMATION MODAL                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📦 Archive Teacher                                                         │
+│                                                                             │
+│  Are you sure you want to archive teacher: John Doe?                       │
+│                                                                             │
+│  ℹ️ Note: This teacher will be moved to the archive.                       │
+│     You can restore them later if needed.                                  │
+│                                                                             │
+│                          [Cancel]  [📦 Archive Teacher]                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                                │
+                                                │ Confirm
+                                                ▼
+
+                        ┌─────────────────────────────┐
+                        │  DATABASE UPDATE:           │
+                        │  is_archived = 1            │
+                        │  archived_at = NOW()        │
+                        │  archived_by = admin_id     │
+                        └─────────────────────────────┘
+                                    │
+                                    ▼
+                    ✅ "Teacher archived successfully!
+                        You can restore it from the archive."
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ARCHIVED TEACHERS VIEW
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Teacher Name    │  Contact      │  Subject  │  Archived    │  Actions      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  John Doe        │  0912345678   │  English  │  May 25,     │  ↩️ 🗑️       │
+│  jane@email.com  │  Manila       │           │  2026        │               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                                                  │  │
+                                                                  │  └─ Permanent Delete
+                                                                  └──── Restore
+
+
+┌──────────────────────────────┬──────────────────────────────────────────────┐
+│   RESTORE WORKFLOW           │   PERMANENT DELETE WORKFLOW                  │
+└──────────────────────────────┴──────────────────────────────────────────────┘
+
+        Click Restore (↩️)                    Click Permanent Delete (🗑️)
+              │                                           │
+              ▼                                           ▼
+┌─────────────────────────────┐         ┌─────────────────────────────────────┐
+│  RESTORE CONFIRMATION       │         │  PERMANENT DELETE WARNING           │
+├─────────────────────────────┤         ├─────────────────────────────────────┤
+│  ↩️ Restore Teacher         │         │  ⚠️ Permanent Delete                │
+│                             │         │                                     │
+│  Restore: John Doe?         │         │  PERMANENTLY DELETE: John Doe?      │
+│                             │         │                                     │
+│  ✅ Will be restored to     │         │  ⚠️ WARNING: Cannot be undone!      │
+│     active list             │         │     All data will be removed!       │
+│                             │         │                                     │
+│  [Cancel] [↩️ Restore]      │         │  Type DELETE to confirm:            │
+└─────────────────────────────┘         │  [____________]                     │
+              │                         │                                     │
+              │ Confirm                 │  [Cancel] [🗑️ Delete] (disabled)   │
+              ▼                         └─────────────────────────────────────┘
+┌─────────────────────────────┐                         │
+│  DATABASE UPDATE:           │                         │ Type "DELETE"
+│  is_archived = 0            │                         ▼
+│  archived_at = NULL         │         ┌─────────────────────────────────────┐
+│  archived_by = NULL         │         │  Button enabled after typing DELETE │
+└─────────────────────────────┘         │  [Cancel] [🗑️ Delete] (enabled)    │
+              │                         └─────────────────────────────────────┘
+              ▼                                         │
+✅ "Teacher restored                                    │ Confirm
+    successfully!"                                      ▼
+              │                         ┌─────────────────────────────────────┐
+              │                         │  DATABASE DELETE:                   │
+              ▼                         │  DELETE FROM educators              │
+    Returns to Active View              │  WHERE id = ?                       │
+                                        └─────────────────────────────────────┘
+                                                        │
+                                                        ▼
+                                        ✅ "Teacher permanently deleted!"
+                                                        │
+                                                        ▼
+                                            Removed from database forever
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            DATA FLOW DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════
+
+                            ┌─────────────────┐
+                            │  ACTIVE TEACHER │
+                            │  is_archived=0  │
+                            └─────────────────┘
+                                    │
+                                    │ Archive Action
+                                    ▼
+                            ┌─────────────────┐
+                            │ ARCHIVED TEACHER│
+                            │  is_archived=1  │
+                            │  archived_at=   │
+                            │  archived_by=   │
+                            └─────────────────┘
+                                    │
+                        ┌───────────┴───────────┐
+                        │                       │
+                Restore │                       │ Permanent Delete
+                        ▼                       ▼
+                ┌─────────────────┐     ┌─────────────────┐
+                │  ACTIVE TEACHER │     │    DELETED      │
+                │  is_archived=0  │     │  (No record)    │
+                │  archived_at=   │     │                 │
+                │  archived_by=   │     │  Gone forever   │
+                └─────────────────┘     └─────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            STATISTICS UPDATES
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE ARCHIVE:
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│   Active     │  │  Currently   │  │   Pending    │  │  Archived    │
+│  Teachers    │  │   Active     │  │  Approval    │  │              │
+│     50       │  │     45       │  │      5       │  │      10      │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+
+                            ↓ Archive 1 teacher ↓
+
+AFTER ARCHIVE:
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│   Active     │  │  Currently   │  │   Pending    │  │  Archived    │
+│  Teachers    │  │   Active     │  │  Approval    │  │              │
+│     49       │  │     44       │  │      5       │  │      11      │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            SECURITY FLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+                        ┌─────────────────┐
+                        │  Admin Login    │
+                        └─────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │  Check Privileges     │
+                    │  $_SESSION['admin']   │
+                    └───────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │                       │
+                ✅ Admin                ❌ Not Admin
+                    │                       │
+                    ▼                       ▼
+        ┌───────────────────────┐   ┌─────────────────┐
+        │  Access Granted       │   │  Redirect to    │
+        │  - Archive            │   │  logout.php     │
+        │  - Restore            │   └─────────────────┘
+        │  - Permanent Delete   │
+        └───────────────────────┘
+                    │
+                    ▼
+        ┌───────────────────────┐
+        │  Action Validation    │
+        │  - Sanitize inputs    │
+        │  - Verify educator ID │
+        │  - Log action         │
+        └───────────────────────┘
+                    │
+                    ▼
+        ┌───────────────────────┐
+        │  Execute Action       │
+        │  - Update database    │
+        │  - Show confirmation  │
+        └───────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            AUDIT TRAIL
+═══════════════════════════════════════════════════════════════════════════════
+
+When educator is archived:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Educator ID: 123                                                           │
+│  Action: ARCHIVED                                                           │
+│  Timestamp: 2026-05-25 14:30:00                                            │
+│  By Admin: admin_id = 5 (John Admin)                                       │
+│  Reason: Stored in archived_by and archived_at columns                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+When educator is restored:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Educator ID: 123                                                           │
+│  Action: RESTORED                                                           │
+│  Timestamp: 2026-05-26 09:15:00                                            │
+│  Previous Archive: 2026-05-25 14:30:00                                     │
+│  Duration Archived: 18 hours 45 minutes                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            KEY FEATURES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SOFT DELETE (Archive)
+   - Educator data preserved
+   - Can be restored anytime
+   - Audit trail maintained
+
+✅ SEPARATE VIEWS
+   - Active teachers view
+   - Archived teachers view
+   - Easy navigation between views
+
+✅ RESTORE FUNCTIONALITY
+   - One-click restore
+   - No data loss
+   - Returns to active list
+
+✅ PERMANENT DELETE
+   - Only from archive view
+   - Requires "DELETE" confirmation
+   - Cannot be undone
+
+✅ STATISTICS DASHBOARD
+   - Real-time counts
+   - Clickable archived count
+   - Visual feedback
+
+✅ SEARCH FUNCTIONALITY
+   - Works in both views
+   - Real-time filtering
+   - Case-insensitive
+
+✅ SECURITY
+   - Admin-only access
+   - Input sanitization
+   - Confirmation modals
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            END OF WORKFLOW DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════
