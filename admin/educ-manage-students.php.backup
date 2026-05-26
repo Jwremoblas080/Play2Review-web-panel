@@ -1,8 +1,8 @@
 <?php
 require_once('../configurations/configurations.php');
 
-// Check educator privileges
-if(!isset($_SESSION['priviledges']) || $_SESSION['priviledges'] != 'educator') {
+// Check admin privileges
+if(!isset($_SESSION['priviledges']) || $_SESSION['priviledges'] != 'admin') {
     header("Location: logout.php");
     exit();
 }
@@ -60,7 +60,7 @@ if(isset($_POST['action'])) {
             break;
     }
     
-    header("Location: educ-manage-students.php");
+    header("Location: manage-students.php");
     exit();
 }
 
@@ -95,9 +95,9 @@ foreach($students as $student) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manage Students - Play2Review Educator</title>
+    <title>Manage Students - Play2Review Admin</title>
     
-    <?php include('includes/educ_header.php'); ?>
+    <?php include('includes/header.php'); ?>
     <style>
     :root {
         --primary: #0A5F38;
@@ -296,8 +296,8 @@ foreach($students as $student) {
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
-    <?php include('includes/educ_topbar.php'); ?>
-    <?php include('includes/educ_sidebar.php'); ?>
+    <?php include('includes/topbar.php'); ?>
+    <?php include('includes/sidebar.php'); ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
